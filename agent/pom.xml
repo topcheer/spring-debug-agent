@@ -12,7 +12,7 @@
     <!-- ============================================================ -->
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.2.1-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Spring Debug Agent</name>
