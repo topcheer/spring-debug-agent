@@ -8,14 +8,12 @@ import com.debugagent.tool.ToolRegistry;
 import com.debugagent.web.AgentController;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.config.ConfigurableListableBeanFactory;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.web.context.ContextLoader;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -74,9 +72,23 @@ public class DebugAgentAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnClass(name = "javax.sql.DataSource")
-    public DataSourceInspector dataSourceInspector() {
-        return new DataSourceInspector();
+    public MBeanInspector mbeanInspector() {
+        return new MBeanInspector();
+    }
+
+    @Bean
+    public CompilationInspector compilationInspector() {
+        return new CompilationInspector();
+    }
+
+    @Bean
+    public EventInspector eventInspector() {
+        return new EventInspector();
+    }
+
+    @Bean
+    public BeanGraphInspector beanGraphInspector() {
+        return new BeanGraphInspector();
     }
 
     // ================================================================
@@ -89,9 +101,21 @@ public class DebugAgentAutoConfiguration {
         return new WebInspector();
     }
 
+    @Bean
+    @ConditionalOnClass(name = "jakarta.servlet.http.HttpServletRequest")
+    public RequestInspector requestInspector() {
+        return new RequestInspector();
+    }
+
     // ================================================================
-    //  Inspectors — conditional on Actuator
+    //  Inspectors — conditional on specific libraries
     // ================================================================
+
+    @Bean
+    @ConditionalOnClass(name = "javax.sql.DataSource")
+    public DataSourceInspector dataSourceInspector() {
+        return new DataSourceInspector();
+    }
 
     @Bean
     @ConditionalOnClass(name = "org.springframework.boot.actuate.health.HealthEndpoint")
@@ -99,19 +123,11 @@ public class DebugAgentAutoConfiguration {
         return new HealthInspector();
     }
 
-    // ================================================================
-    //  Inspectors — conditional on scheduling
-    // ================================================================
-
     @Bean
     @ConditionalOnClass(name = "org.springframework.scheduling.annotation.ScheduledAnnotationBeanPostProcessor")
     public TaskInspector taskInspector() {
         return new TaskInspector();
     }
-
-    // ================================================================
-    //  Inspectors — conditional on Spring Cache
-    // ================================================================
 
     @Bean
     @ConditionalOnClass(name = "org.springframework.cache.CacheManager")
@@ -119,19 +135,11 @@ public class DebugAgentAutoConfiguration {
         return new CacheInspector();
     }
 
-    // ================================================================
-    //  Inspectors — conditional on Hibernate
-    // ================================================================
-
     @Bean
     @ConditionalOnClass(name = "org.hibernate.SessionFactory")
     public JpaInspector jpaInspector() {
         return new JpaInspector();
     }
-
-    // ================================================================
-    //  Inspectors — conditional on Apache HttpClient / WebClient
-    // ================================================================
 
     @Bean
     @ConditionalOnClass(name = "org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager")
@@ -139,14 +147,16 @@ public class DebugAgentAutoConfiguration {
         return new HttpClientInspector();
     }
 
-    // ================================================================
-    //  Inspectors — conditional on Spring Boot autoconfigure internals
-    // ================================================================
-
     @Bean
     @ConditionalOnClass(name = "org.springframework.boot.autoconfigure.condition.ConditionEvaluationReport")
     public FeatureFlagInspector featureFlagInspector() {
         return new FeatureFlagInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "io.micrometer.core.instrument.MeterRegistry")
+    public MetricsInspector metricsInspector() {
+        return new MetricsInspector();
     }
 
     // ================================================================
@@ -169,7 +179,11 @@ public class DebugAgentAutoConfiguration {
                                      LogInspector logInspector,
                                      EnvironmentInspector environmentInspector,
                                      ClassloadingInspector classloadingInspector,
-                                     SystemControlInspector systemControlInspector) {
+                                     SystemControlInspector systemControlInspector,
+                                     MBeanInspector mbeanInspector,
+                                     CompilationInspector compilationInspector,
+                                     EventInspector eventInspector,
+                                     BeanGraphInspector beanGraphInspector) {
 
         List<Object> inspectors = new ArrayList<>();
         inspectors.add(jvmInspector);
@@ -179,16 +193,22 @@ public class DebugAgentAutoConfiguration {
         inspectors.add(environmentInspector);
         inspectors.add(classloadingInspector);
         inspectors.add(systemControlInspector);
+        inspectors.add(mbeanInspector);
+        inspectors.add(compilationInspector);
+        inspectors.add(eventInspector);
+        inspectors.add(beanGraphInspector);
 
         // Conditionally add optional inspectors (only if beans exist)
         addIfExists(ctx, DataSourceInspector.class, inspectors);
         addIfExists(ctx, WebInspector.class, inspectors);
+        addIfExists(ctx, RequestInspector.class, inspectors);
         addIfExists(ctx, HealthInspector.class, inspectors);
         addIfExists(ctx, TaskInspector.class, inspectors);
         addIfExists(ctx, CacheInspector.class, inspectors);
         addIfExists(ctx, JpaInspector.class, inspectors);
         addIfExists(ctx, HttpClientInspector.class, inspectors);
         addIfExists(ctx, FeatureFlagInspector.class, inspectors);
+        addIfExists(ctx, MetricsInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {

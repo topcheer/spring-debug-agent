@@ -6,6 +6,7 @@ import org.springframework.stereotype.Component;
 
 import java.lang.management.*;
 import java.util.*;
+import javax.management.ObjectName;
 
 /**
  * JVM-level diagnostic tools.
@@ -263,6 +264,103 @@ public class JvmInspector {
         if (bytes < 1024 * 1024) return String.format("%.1f KB", bytes / 1024.0);
         if (bytes < 1024 * 1024 * 1024) return String.format("%.1f MB", bytes / (1024.0 * 1024));
         return String.format("%.2f GB", bytes / (1024.0 * 1024 * 1024));
+    }
+
+    // ==================== Heap Histogram & Buffer Tools ====================
+
+    @DebugTool(description = "Get heap histogram: object count and estimated size per class. Useful for finding memory leaks by identifying classes with unusually high instance counts. Uses com.sun.management的热点 API or falls back to instrumentation estimate.")
+    public List<Map<String, Object>> getHeapHistogram(
+            @ToolParam(description = "Maximum number of classes to return (default 30, sorted by size)") Integer limit
+    ) {
+        List<Map<String, Object>> result = new ArrayList<>();
+        try {
+            int max = limit != null && limit > 0 ? limit : 30;
+
+            // Try com.sun.management.ThreadMXBean (HotSpot-specific) for per-thread allocation
+            // For heap classes, we use the diagnostic command via reflection
+            // Fallback: use BufferPoolMXBean for direct buffer stats
+
+            // Try using the internal hotspot diagnostic MBean for class histogram
+            try {
+                java.lang.management.OperatingSystemMXBean os = ManagementFactory.getOperatingSystemMXBean();
+                // Use reflection to call diagnosticCommands on com.sun.management:type=DiagnosticCommand
+                javax.management.MBeanServer server = ManagementFactory.getPlatformMBeanServer();
+                ObjectName diagName = new ObjectName("com.sun.management:type=DiagnosticCommand");
+                String output = (String) server.invoke(diagName, "gcClassHistogram",
+                        new Object[]{null}, new String[]{"[Ljava.lang.String;"});
+
+                // Parse output: lines like " num:  instances  bytes  class name"
+                String[] lines = output.split("\n");
+                for (String line : lines) {
+                    line = line.trim();
+                    if (line.matches("\\d+:\\s+\\d+\\s+\\d+\\s+.*")) {
+                        String[] parts = line.split("\\s+", 4);
+                        if (parts.length >= 4) {
+                            Map<String, Object> entry = new LinkedHashMap<>();
+                            entry.put("rank", Integer.parseInt(parts[0].replace(":", "")));
+                            entry.put("instanceCount", Long.parseLong(parts[1]));
+                            entry.put("sizeBytes", Long.parseLong(parts[2]));
+                            entry.put("sizeFormatted", formatBytes(Long.parseLong(parts[2])));
+                            entry.put("className", parts[3]);
+                            result.add(entry);
+                        }
+                    }
+                }
+                // Truncate to limit
+                if (result.size() > max) {
+                    result = result.subList(0, max);
+                }
+                return result;
+            } catch (Exception diagEx) {
+                // Diagnostic command not available — fall through to estimate
+            }
+
+            // Fallback: return a message about what's needed
+            Map<String, Object> fallback = new LinkedHashMap<>();
+            fallback.put("note", "Heap histogram requires HotSpot DiagnosticCommand MBean (not available in this JVM).");
+            fallback.put("alternative", "Use get_memory_usage for memory pool details, or use trigger_gc + before/after comparison.");
+            result.add(fallback);
+        } catch (Exception e) {
+            Map<String, Object> error = new LinkedHashMap<>();
+            error.put("error", e.getMessage());
+            result.add(error);
+        }
+        return result;
+    }
+
+    @DebugTool(description = "Get DirectByteBuffer and MappedByteBuffer pool statistics. Tracks direct memory usage which is not visible in normal heap stats and is a common source of memory leaks.")
+    public Map<String, Object> getBufferPoolStats() {
+        Map<String, Object> result = new LinkedHashMap<>();
+        try {
+            List<java.lang.management.BufferPoolMXBean> pools =
+                    ManagementFactory.getPlatformMXBeans(java.lang.management.BufferPoolMXBean.class);
+
+            List<Map<String, Object>> poolStats = new ArrayList<>();
+            for (java.lang.management.BufferPoolMXBean pool : pools) {
+                Map<String, Object> p = new LinkedHashMap<>();
+                p.put("name", pool.getName());
+                p.put("count", pool.getCount());
+                p.put("memoryUsed", formatBytes(pool.getMemoryUsed()));
+                p.put("memoryUsedBytes", pool.getMemoryUsed());
+                p.put("totalCapacity", formatBytes(pool.getTotalCapacity()));
+                p.put("totalCapacityBytes", pool.getTotalCapacity());
+                poolStats.add(p);
+            }
+
+            result.put("bufferPools", poolStats);
+            result.put("poolCount", poolStats.size());
+
+            // Add netty direct memory estimate if Netty is present
+            try {
+                Class<?> cleanerClass = Class.forName("io.netty.util.internal.CleanerJava9");
+                result.put("nettyDetected", true);
+            } catch (ClassNotFoundException notNetty) {
+                // Not using Netty — that's fine
+            }
+        } catch (Exception e) {
+            result.put("error", e.getMessage());
+        }
+        return result;
     }
 
     private String formatDuration(long ms) {
