@@ -1,5 +1,6 @@
 package com.demo.service;
 
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 
 import java.math.BigDecimal;
@@ -11,6 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
  *
  * In a real app this would be a Feign client or RestTemplate call to another service.
  * It deliberately introduces latency and has some pricing logic.
+ *
+ * @Cacheable demonstrates Spring Cache integration for the CacheInspector tool.
  */
 @Service
 public class PricingService {
@@ -30,7 +33,9 @@ public class PricingService {
 
     /**
      * Look up price for a SKU. Simulates network latency.
+     * Results are cached to demonstrate Spring Cache.
      */
+    @Cacheable(value = "prices", key = "#sku")
     public BigDecimal getPrice(String sku) {
         // Simulate network call latency
         simulateLatency(50 + (int)(Math.random() * 100));

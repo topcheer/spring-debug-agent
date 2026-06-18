@@ -63,6 +63,18 @@
             <scope>runtime</scope>
         </dependency>
 
+        <!-- Apache HttpClient5 — for HttpClientInspector demo -->
+        <dependency>
+            <groupId>org.apache.httpcomponents.client5</groupId>
+            <artifactId>httpclient5</artifactId>
+        </dependency>
+
+        <!-- Spring Boot Cache starter — for CacheInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-cache</artifactId>
+        </dependency>
+
         <!-- Test -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

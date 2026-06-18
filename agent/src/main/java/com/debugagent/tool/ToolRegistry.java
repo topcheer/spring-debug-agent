@@ -74,4 +74,11 @@ public class ToolRegistry {
     public int size() {
         return tools.size();
     }
+
+    /**
+     * Alias for size() — number of registered tools.
+     */
+    public int toolCount() {
+        return tools.size();
+    }
 }
