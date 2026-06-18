@@ -31,3 +31,8 @@ gradlew.bat
 *.log
 .ggcode/
 .mvn/settings.xml
+
+# Demo recordings (large video files)
+demo-recordings/*.mp4
+demo-recordings/*.webm
+demo-recordings/*.png
