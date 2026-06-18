@@ -102,6 +102,8 @@ jobs:
             -f agent/pom.xml
         env:
           MAVEN_OPTS: "-Xmx2g"
+          SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
+          SONATYPE_TOKEN: ${{ secrets.SONATYPE_TOKEN }}
 
       # ── Step 6: Bump to next SNAPSHOT ────────────────────────────
       - name: Bump to next SNAPSHOT
