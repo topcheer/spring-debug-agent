@@ -50,9 +50,8 @@ public class MetricsInspector implements ApplicationContextAware {
             int total = 0;
             for (Object meter : iterable) {
                 total++;
-                String name = (String) ReflectionHelper.invokeMethod(meter, "getId") != null
-                        ? getNameFromId(ReflectionHelper.invokeMethod(meter, "getId"))
-                        : "unknown";
+                Object idObj = ReflectionHelper.invokeMethod(meter, "getId");
+                String name = idObj != null ? getNameFromId(idObj) : "unknown";
 
                 if (nameFilter != null && !nameFilter.isBlank()
                         && !name.toLowerCase().contains(nameFilter.toLowerCase())) {
