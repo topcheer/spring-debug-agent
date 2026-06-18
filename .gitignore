@@ -1,0 +1,32 @@
+# Build artifacts
+target/
+build/
+*.jar
+*.class
+
+# IDE
+.idea/
+*.iml
+*.iws
+*.ipr
+.vscode/
+.settings/
+.project
+.classpath
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Node (demo recording tooling)
+node_modules/
+
+# Gradle legacy
+.gradle/
+gradle/
+gradlew
+gradlew.bat
+
+# Logs
+*.log
+.ggcode/

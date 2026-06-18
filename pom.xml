@@ -1,0 +1,102 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<project xmlns="http://maven.apache.org/POM/4.0.0"
+         xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+         xsi:schemaLocation="http://maven.apache.org/POM/4.0.0
+         https://maven.apache.org/xsd/maven-4.0.0.xsd">
+
+    <modelVersion>4.0.0</modelVersion>
+
+    <!-- ============================================================ -->
+    <!--  Parent POM — manages versions & modules                     -->
+    <!-- ============================================================ -->
+    <groupId>com.debugagent</groupId>
+    <artifactId>spring-debug-agent-parent</artifactId>
+    <version>0.1.0-SNAPSHOT</version>
+    <packaging>pom</packaging>
+
+    <name>Spring Debug Agent — Parent</name>
+    <description>AI-powered debugging agent for Spring Boot applications</description>
+
+    <!-- ============================================================ -->
+    <!--  Modules                                                     -->
+    <!-- ============================================================ -->
+    <modules>
+        <module>agent</module>
+        <module>demo</module>
+    </modules>
+
+    <!-- ============================================================ -->
+    <!--  Properties                                                  -->
+    <!-- ============================================================ -->
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+
+        <!-- Dependency versions -->
+        <spring-boot.version>3.3.4</spring-boot.version>
+        <byte-buddy.version>1.15.4</byte-buddy.version>
+    </properties>
+
+    <!-- ============================================================ -->
+    <!--  Dependency Management — single source of versions           -->
+    <!-- ============================================================ -->
+    <dependencyManagement>
+        <dependencies>
+            <!-- Import Spring Boot BOM for version alignment -->
+            <dependency>
+                <groupId>org.springframework.boot</groupId>
+                <artifactId>spring-boot-dependencies</artifactId>
+                <version>${spring-boot.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
+
+            <!-- Our own modules -->
+            <dependency>
+                <groupId>com.debugagent</groupId>
+                <artifactId>spring-debug-agent</artifactId>
+                <version>${project.version}</version>
+            </dependency>
+
+            <!-- ByteBuddy (pinned, not in Spring Boot BOM) -->
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy</artifactId>
+                <version>${byte-buddy.version}</version>
+            </dependency>
+            <dependency>
+                <groupId>net.bytebuddy</groupId>
+                <artifactId>byte-buddy-agent</artifactId>
+                <version>${byte-buddy.version}</version>
+            </dependency>
+        </dependencies>
+    </dependencyManagement>
+
+    <!-- ============================================================ -->
+    <!--  Build — plugin management                                   -->
+    <!-- ============================================================ -->
+    <build>
+        <pluginManagement>
+            <plugins>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-compiler-plugin</artifactId>
+                    <version>3.13.0</version>
+                    <configuration>
+                        <source>${java.version}</source>
+                        <target>${java.version}</target>
+                        <parameters>true</parameters>
+                    </configuration>
+                </plugin>
+                <plugin>
+                    <groupId>org.springframework.boot</groupId>
+                    <artifactId>spring-boot-maven-plugin</artifactId>
+                    <version>${spring-boot.version}</version>
+                </plugin>
+            </plugins>
+        </pluginManagement>
+    </build>
+
+</project>
