@@ -30,3 +30,4 @@ gradlew.bat
 # Logs
 *.log
 .ggcode/
+.mvn/settings.xml

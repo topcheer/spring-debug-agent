@@ -8,26 +8,64 @@
 
     <!-- ============================================================ -->
     <!--  Core Agent Library                                           -->
+    <!--  Self-contained POM — no parent dependency                   -->
     <!-- ============================================================ -->
-    <parent>
-        <groupId>com.debugagent</groupId>
-        <artifactId>spring-debug-agent-parent</artifactId>
-        <version>0.1.0-SNAPSHOT</version>
-        <relativePath>../pom.xml</relativePath>
-    </parent>
-
+    <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
+    <version>0.1.0</version>
     <packaging>jar</packaging>
 
-    <name>Spring Debug Agent — Core</name>
+    <name>Spring Debug Agent</name>
     <description>
         Embedded AI debugging agent for Spring Boot 3.x applications.
         Add this dependency, configure an LLM key, and chat with your live application
         at /agent to inspect threads, beans, memory, and set runtime watch points.
     </description>
+    <url>https://github.com/topcheer/spring-debug-agent</url>
 
     <!-- ============================================================ -->
-    <!--  Dependencies                                                -->
+    <!--  Licenses                                                    -->
+    <!-- ============================================================ -->
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <!-- ============================================================ -->
+    <!--  Developers                                                  -->
+    <!-- ============================================================ -->
+    <developers>
+        <developer>
+            <id>topcheer</id>
+            <name>topcheer</name>
+            <url>https://github.com/topcheer</url>
+        </developer>
+    </developers>
+
+    <!-- ============================================================ -->
+    <!--  SCM                                                         -->
+    <!-- ============================================================ -->
+    <scm>
+        <connection>scm:git:git://github.com/topcheer/spring-debug-agent.git</connection>
+        <developerConnection>scm:git:ssh://github.com/topcheer/spring-debug-agent.git</developerConnection>
+        <url>https://github.com/topcheer/spring-debug-agent/tree/main</url>
+    </scm>
+
+    <!-- ============================================================ -->
+    <!--  Properties                                                  -->
+    <!-- ============================================================ -->
+    <properties>
+        <java.version>17</java.version>
+        <maven.compiler.source>17</maven.compiler.source>
+        <maven.compiler.target>17</maven.compiler.target>
+        <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
+    </properties>
+
+    <!-- ============================================================ -->
+    <!--  Dependencies (explicit versions — self-contained)           -->
     <!-- ============================================================ -->
     <dependencies>
 
@@ -37,22 +75,26 @@
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy</artifactId>
+            <version>1.15.4</version>
         </dependency>
         <dependency>
             <groupId>net.bytebuddy</groupId>
             <artifactId>byte-buddy-agent</artifactId>
+            <version>1.15.4</version>
         </dependency>
 
         <!-- SLF4J: logging API (impl provided by user's app) -->
         <dependency>
             <groupId>org.slf4j</groupId>
             <artifactId>slf4j-api</artifactId>
+            <version>2.0.16</version>
         </dependency>
 
         <!-- Jackson: JSON serialization for LLM communication -->
         <dependency>
             <groupId>com.fasterxml.jackson.core</groupId>
             <artifactId>jackson-databind</artifactId>
+            <version>2.17.2</version>
         </dependency>
 
         <!-- ============ Provided by user's Spring Boot app ============ -->
@@ -60,26 +102,31 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot</artifactId>
+            <version>3.3.4</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-autoconfigure</artifactId>
+            <version>3.3.4</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-web</artifactId>
+            <version>6.1.13</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
+            <version>6.1.13</version>
             <scope>provided</scope>
         </dependency>
         <dependency>
             <groupId>jakarta.servlet</groupId>
             <artifactId>jakarta.servlet-api</artifactId>
+            <version>6.0.0</version>
             <scope>provided</scope>
         </dependency>
 
@@ -87,6 +134,7 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-configuration-processor</artifactId>
+            <version>3.3.4</version>
             <optional>true</optional>
         </dependency>
 
@@ -94,13 +142,96 @@
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
+            <version>3.3.4</version>
             <scope>test</scope>
         </dependency>
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-web</artifactId>
+            <version>3.3.4</version>
             <scope>test</scope>
         </dependency>
     </dependencies>
+
+    <!-- ============================================================ -->
+    <!--  Build                                                       -->
+    <!-- ============================================================ -->
+    <build>
+        <plugins>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-compiler-plugin</artifactId>
+                <version>3.13.0</version>
+                <configuration>
+                    <source>${java.version}</source>
+                    <target>${java.version}</target>
+                    <parameters>true</parameters>
+                </configuration>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-source-plugin</artifactId>
+                <version>3.3.1</version>
+                <executions>
+                    <execution>
+                        <id>attach-sources</id>
+                        <goals>
+                            <goal>jar-no-fork</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-javadoc-plugin</artifactId>
+                <version>3.10.1</version>
+                <configuration>
+                    <doclint>none</doclint>
+                    <failOnError>false</failOnError>
+                </configuration>
+                <executions>
+                    <execution>
+                        <id>attach-javadocs</id>
+                        <goals>
+                            <goal>jar</goal>
+                        </goals>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- GPG signing (required by Maven Central) -->
+            <plugin>
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-gpg-plugin</artifactId>
+                <version>3.2.7</version>
+                <executions>
+                    <execution>
+                        <id>sign-artifacts</id>
+                        <phase>verify</phase>
+                        <goals>
+                            <goal>sign</goal>
+                        </goals>
+                        <configuration>
+                            <gpgArguments>
+                                <arg>--pinentry-mode</arg>
+                                <arg>loopback</arg>
+                            </gpgArguments>
+                        </configuration>
+                    </execution>
+                </executions>
+            </plugin>
+            <!-- Central Publishing Portal -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.7.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                    <waitUntil>published</waitUntil>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
 
 </project>

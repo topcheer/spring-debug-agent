@@ -9,13 +9,14 @@
     <!-- ============================================================ -->
     <!--  Parent POM — manages versions & modules                     -->
     <!-- ============================================================ -->
-    <groupId>com.debugagent</groupId>
+    <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent-parent</artifactId>
-    <version>0.1.0-SNAPSHOT</version>
+    <version>0.1.0</version>
     <packaging>pom</packaging>
 
     <name>Spring Debug Agent — Parent</name>
-    <description>AI-powered debugging agent for Spring Boot applications</description>
+    <description>AI-powered debugging agent embedded in Spring Boot applications</description>
+    <url>https://github.com/topcheer/spring-debug-agent</url>
 
     <!-- ============================================================ -->
     <!--  Modules                                                     -->
@@ -24,6 +25,37 @@
         <module>agent</module>
         <module>demo</module>
     </modules>
+
+    <!-- ============================================================ -->
+    <!--  Licenses                                                    -->
+    <!-- ============================================================ -->
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+            <distribution>repo</distribution>
+        </license>
+    </licenses>
+
+    <!-- ============================================================ -->
+    <!--  Developers                                                  -->
+    <!-- ============================================================ -->
+    <developers>
+        <developer>
+            <id>topcheer</id>
+            <name>topcheer</name>
+            <url>https://github.com/topcheer</url>
+        </developer>
+    </developers>
+
+    <!-- ============================================================ -->
+    <!--  SCM                                                         -->
+    <!-- ============================================================ -->
+    <scm>
+        <connection>scm:git:git://github.com/topcheer/spring-debug-agent.git</connection>
+        <developerConnection>scm:git:ssh://github.com/topcheer/spring-debug-agent.git</developerConnection>
+        <url>https://github.com/topcheer/spring-debug-agent/tree/main</url>
+    </scm>
 
     <!-- ============================================================ -->
     <!--  Properties                                                  -->
@@ -37,6 +69,9 @@
         <!-- Dependency versions -->
         <spring-boot.version>3.3.4</spring-boot.version>
         <byte-buddy.version>1.15.4</byte-buddy.version>
+
+        <!-- Parent pom itself is not deployed to Central -->
+        <maven.deploy.skip>true</maven.deploy.skip>
     </properties>
 
     <!-- ============================================================ -->
@@ -55,7 +90,7 @@
 
             <!-- Our own modules -->
             <dependency>
-                <groupId>com.debugagent</groupId>
+                <groupId>dev.ggcode</groupId>
                 <artifactId>spring-debug-agent</artifactId>
                 <version>${project.version}</version>
             </dependency>
@@ -91,9 +126,51 @@
                     </configuration>
                 </plugin>
                 <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-source-plugin</artifactId>
+                    <version>3.3.1</version>
+                    <executions>
+                        <execution>
+                            <id>attach-sources</id>
+                            <goals>
+                                <goal>jar-no-fork</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
+                    <groupId>org.apache.maven.plugins</groupId>
+                    <artifactId>maven-javadoc-plugin</artifactId>
+                    <version>3.10.1</version>
+                    <configuration>
+                        <doclint>none</doclint>
+                        <failOnError>false</failOnError>
+                    </configuration>
+                    <executions>
+                        <execution>
+                            <id>attach-javadocs</id>
+                            <goals>
+                                <goal>jar</goal>
+                            </goals>
+                        </execution>
+                    </executions>
+                </plugin>
+                <plugin>
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring-boot.version}</version>
+                </plugin>
+                <!-- Central Publishing Portal -->
+                <plugin>
+                    <groupId>org.sonatype.central</groupId>
+                    <artifactId>central-publishing-maven-plugin</artifactId>
+                    <version>0.6.0</version>
+                    <extensions>true</extensions>
+                    <configuration>
+                        <publishingServerId>central</publishingServerId>
+                        <autoPublish>true</autoPublish>
+                        <waitUntil>published</waitUntil>
+                    </configuration>
                 </plugin>
             </plugins>
         </pluginManagement>
