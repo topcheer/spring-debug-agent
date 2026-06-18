@@ -12,7 +12,7 @@
     <!-- ============================================================ -->
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.3.1-SNAPSHOT</version>
+    <version>0.1.0-SNAPSHOT</version>
     <packaging>jar</packaging>
 
     <name>Spring Debug Agent</name>
@@ -128,6 +128,12 @@
         <dependency>
             <groupId>org.springframework</groupId>
             <artifactId>spring-webmvc</artifactId>
+            <version>6.1.13</version>
+            <scope>provided</scope>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework</groupId>
+            <artifactId>spring-tx</artifactId>
             <version>6.1.13</version>
             <scope>provided</scope>
         </dependency>

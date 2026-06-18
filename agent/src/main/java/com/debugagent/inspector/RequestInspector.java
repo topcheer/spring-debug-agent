@@ -188,4 +188,81 @@ public class RequestInspector {
         int index = (int) Math.ceil(pct / 100.0 * sorted.size()) - 1;
         return sorted.get(Math.max(0, Math.min(index, sorted.size() - 1)));
     }
+
+    @DebugTool(description = "Search HTTP request history by exact or partial path match. Returns all matching requests with full details including headers and exception traces.")
+    public Map<String, Object> getRequestByPath(
+            @ToolParam(description = "Path to search for (partial match, case-insensitive)", required = true) String path,
+            @ToolParam(description = "Maximum results (default 20)") Integer limit
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        int max = limit != null && limit > 0 ? limit : 20;
+
+        List<Map<String, Object>> matches = new ArrayList<>();
+        for (Map<String, Object> req : RequestCaptureFilter.recentRequests) {
+            String reqPath = (String) req.get("path");
+            if (reqPath != null && reqPath.toLowerCase().contains(path.toLowerCase())) {
+                matches.add(req);
+                if (matches.size() >= max) break;
+            }
+        }
+
+        result.put("searchPath", path);
+        result.put("matches", matches);
+        result.put("matchCount", matches.size());
+
+        if (!matches.isEmpty()) {
+            result.put("summary", computeSummary(matches));
+        }
+
+        return result;
+    }
+
+    @DebugTool(description = "Get all error HTTP requests (4xx and 5xx status codes). Shows status code, path, exception, and duration. Useful for finding failing endpoints.")
+    public Map<String, Object> getErrorRequests(
+            @ToolParam(description = "Filter by path prefix. Leave empty for all.") String pathFilter,
+            @ToolParam(description = "Error type: '4xx', '5xx', or empty for all errors") String errorType,
+            @ToolParam(description = "Maximum results (default 50)") Integer limit
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        int max = limit != null && limit > 0 ? limit : 50;
+
+        List<Map<String, Object>> errors = new ArrayList<>();
+        for (Map<String, Object> req : RequestCaptureFilter.recentRequests) {
+            int status = (Integer) req.getOrDefault("status", 0);
+            if (status < 400) continue;
+
+            // Filter by error type
+            if (errorType != null && !errorType.isBlank()) {
+                String prefix = errorType.replaceAll("xx", "");
+                if (!String.valueOf(status).startsWith(prefix)) continue;
+            }
+
+            // Filter by path
+            String reqPath = (String) req.get("path");
+            if (pathFilter != null && !pathFilter.isBlank()
+                    && !reqPath.toLowerCase().contains(pathFilter.toLowerCase())) {
+                continue;
+            }
+
+            errors.add(req);
+            if (errors.size() >= max) break;
+        }
+
+        result.put("errors", errors);
+        result.put("errorCount", errors.size());
+
+        // Group by status code
+        Map<Integer, Integer> byStatus = new TreeMap<>();
+        Map<String, Integer> byPath = new TreeMap<>();
+        for (Map<String, Object> e : errors) {
+            int s = (Integer) e.getOrDefault("status", 0);
+            byStatus.merge(s, 1, Integer::sum);
+            String p = (String) e.get("path");
+            byPath.merge(p, 1, Integer::sum);
+        }
+        result.put("byStatus", byStatus);
+        result.put("byPath", byPath);
+
+        return result;
+    }
 }

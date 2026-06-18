@@ -32,6 +32,7 @@ public class WatchPointManager implements ApplicationContextAware {
     private ApplicationContext ctx;
     private Instrumentation instrumentation;
     private final Set<String> instrumentedKeys = ConcurrentHashMap.newKeySet();
+    private final Map<String, FieldWatchInfo> fieldWatchPoints = new ConcurrentHashMap<>();
 
     @Override
     public void setApplicationContext(ApplicationContext ctx) {
@@ -288,5 +289,71 @@ public class WatchPointManager implements ApplicationContextAware {
             return str.substring(0, 500) + "... (truncated)";
         }
         return str;
+    }
+
+    @DebugTool(description = "Monitor a specific field on a bean for value changes. Each time the field value changes, the old value, new value, thread, and timestamp are captured. Useful for finding unexpected mutations.")
+    public Map<String, Object> addFieldWatchPoint(
+            @ToolParam(description = "Bean name", required = true) String beanName,
+            @ToolParam(description = "Field name to monitor", required = true) String fieldName
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        try {
+            Object bean = ctx.getBean(beanName);
+            if (bean == null) {
+                return Map.of("error", "Bean not found: " + beanName);
+            }
+
+            // Find the field in class hierarchy
+            Class<?> clazz = bean.getClass();
+            java.lang.reflect.Field field = null;
+            while (clazz != null && field == null) {
+                try {
+                    field = clazz.getDeclaredField(fieldName);
+                } catch (NoSuchFieldException e) {
+                    clazz = clazz.getSuperclass();
+                }
+            }
+
+            if (field == null) {
+                return Map.of("error", "Field '" + fieldName + "' not found on bean '" + beanName + "'");
+            }
+
+            field.setAccessible(true);
+            Object currentValue = field.get(bean);
+
+            String watchId = "field-" + beanName + "-" + fieldName;
+            fieldWatchPoints.put(watchId, new FieldWatchInfo(beanName, fieldName, bean, field, currentValue));
+
+            result.put("watchId", watchId);
+            result.put("beanName", beanName);
+            result.put("fieldName", fieldName);
+            result.put("fieldType", field.getType().getSimpleName());
+            result.put("currentValue", safeToString(currentValue));
+            result.put("message", "Field watch point set. Use get_watch_results to see value changes. " +
+                    "Note: field values are polled on each get_watch_results call.");
+
+        } catch (Exception e) {
+            result.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    private static class FieldWatchInfo {
+        final String beanName;
+        final String fieldName;
+        final Object bean;
+        final java.lang.reflect.Field field;
+        Object lastValue;
+        final List<Map<String, Object>> changes = Collections.synchronizedList(new ArrayList<>());
+
+        FieldWatchInfo(String beanName, String fieldName, Object bean, java.lang.reflect.Field field, Object initialValue) {
+            this.beanName = beanName;
+            this.fieldName = fieldName;
+            this.bean = bean;
+            this.field = field;
+            this.lastValue = initialValue;
+        }
     }
 }

@@ -190,4 +190,65 @@ public class WebInspector implements ApplicationContextAware {
         m.put("error", msg);
         return m;
     }
+
+    @DebugTool(description = "List all registered servlet filter chains. Shows which filters apply to which URL patterns. Useful for debugging Spring Security, CORS, or request lifecycle issues.")
+    public List<Map<String, Object>> getFilterChains() {
+        List<Map<String, Object>> result = new ArrayList<>();
+
+        try {
+            // Try to get FilterRegistrationBeans from the context
+            Map<String, ?> filterBeans = ctx.getBeansOfType(
+                    jakarta.servlet.Filter.class);
+
+            for (Map.Entry<String, ?> entry : filterBeans.entrySet()) {
+                Map<String, Object> filterInfo = new LinkedHashMap<>();
+                filterInfo.put("beanName", entry.getKey());
+                filterInfo.put("filterClass", entry.getValue().getClass().getSimpleName());
+
+                // Check for registration
+                try {
+                    Object registration =
+                            ReflectionHelper.invokeMethod(entry.getValue(), "getRegistration");
+                    if (registration != null) {
+                        Map<String, Object> regInfo = new LinkedHashMap<>();
+                        regInfo.put("class", registration.getClass().getSimpleName());
+                        result.add(regInfo);
+                    }
+                } catch (Exception ignored) {}
+
+                // Check if it's a Spring Security filter
+                String className = entry.getValue().getClass().getName();
+                if (className.contains("security") || className.contains("Security")) {
+                    filterInfo.put("category", "security");
+                } else if (className.contains("cors") || className.contains("Cors")) {
+                    filterInfo.put("category", "cors");
+                } else if (className.contains("CharacterEncoding") || className.contains("RequestContext")) {
+                    filterInfo.put("category", "spring-core");
+                } else {
+                    filterInfo.put("category", "other");
+                }
+
+                result.add(filterInfo);
+            }
+
+            // Also try to get FilterChainProxy (Spring Security)
+            try {
+                Object filterChainProxy = ctx.getBean("springSecurityFilterChain");
+                Map<String, Object> secInfo = new LinkedHashMap<>();
+                secInfo.put("beanName", "springSecurityFilterChain");
+                secInfo.put("filterClass", filterChainProxy.getClass().getSimpleName());
+                secInfo.put("category", "spring-security-chain");
+                secInfo.put("note", "This is the main Spring Security filter chain proxy. " +
+                        "It delegates to multiple SecurityFilterChain instances based on URL pattern.");
+                result.add(secInfo);
+            } catch (Exception ignored) {
+                // Spring Security not present
+            }
+
+        } catch (Exception e) {
+            result.add(Map.of("error", e.getClass().getSimpleName() + ": " + e.getMessage()));
+        }
+
+        return result;
+    }
 }

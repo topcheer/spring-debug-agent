@@ -372,4 +372,85 @@ public class JvmInspector {
         if (minutes > 0) return String.format("%dm %ds", minutes, secs);
         return String.format("%ds", secs);
     }
+
+    // ==================== System Properties ====================
+
+    @DebugTool(description = "Get JVM system properties (java.version, os.name, file.encoding, etc.). Useful for diagnosing configuration issues or environment mismatches.")
+    public Map<String, Object> getSystemProperties(
+            @ToolParam(description = "Filter by property name prefix (e.g., 'java.', 'spring.'). Leave empty for all.") String prefix
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+        java.util.Properties props = System.getProperties();
+        Map<String, String> filtered = new TreeMap<>();
+
+        for (String key : props.stringPropertyNames()) {
+            if (prefix != null && !prefix.isBlank() && !key.startsWith(prefix)) continue;
+            filtered.put(key, props.getProperty(key));
+        }
+
+        result.put("count", filtered.size());
+        result.put("properties", filtered);
+        return result;
+    }
+
+    @DebugTool(description = "Get process-level info: PID, CPU usage, memory limits, container environment detection. Useful for diagnosing resource constraints in Docker/Kubernetes.")
+    public Map<String, Object> getProcessInfo() {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        // PID
+        try {
+            result.put("pid", ProcessHandle.current().pid());
+        } catch (Exception e) {
+            result.put("pid", "unknown");
+        }
+
+        // CPU
+        try {
+            OperatingSystemMXBean osBean = ManagementFactory.getOperatingSystemMXBean();
+            result.put("availableProcessors", osBean.getAvailableProcessors());
+            result.put("systemLoadAverage", osBean.getSystemLoadAverage());
+            result.put("arch", osBean.getArch());
+            result.put("osName", osBean.getName());
+            result.put("osVersion", osBean.getVersion());
+
+            // Try com.sun.management for process CPU
+            if (osBean instanceof com.sun.management.OperatingSystemMXBean sunOs) {
+                result.put("processCpuLoad", String.format("%.1f%%", sunOs.getProcessCpuLoad() * 100));
+                result.put("systemCpuLoad", String.format("%.1f%%", sunOs.getSystemCpuLoad() * 100));
+                result.put("totalPhysicalMemory", formatBytes(sunOs.getTotalMemorySize()));
+                result.put("freePhysicalMemory", formatBytes(sunOs.getFreeMemorySize()));
+                result.put("committedVirtualMemory", formatBytes(sunOs.getCommittedVirtualMemorySize()));
+                result.put("totalSwapSpace", formatBytes(sunOs.getTotalSwapSpaceSize()));
+                result.put("freeSwapSpace", formatBytes(sunOs.getFreeSwapSpaceSize()));
+            }
+        } catch (Exception e) {
+            result.put("cpuError", e.getMessage());
+        }
+
+        // Container detection
+        result.put("containerDetected", isRunningInContainer());
+
+        // Memory limits (cgroup)
+        try {
+            // Check if running in cgroup-limited environment
+            Runtime runtime = Runtime.getRuntime();
+            result.put("jvmMaxMemory", formatBytes(runtime.maxMemory()));
+        } catch (Exception ignored) {
+        }
+
+        return result;
+    }
+
+    private boolean isRunningInContainer() {
+        try {
+            // Check for common container indicators
+            if (java.nio.file.Files.exists(java.nio.file.Paths.get("/.dockerenv"))) return true;
+            if (System.getenv("KUBERNETES_SERVICE_HOST") != null) return true;
+            if (java.nio.file.Files.exists(java.nio.file.Paths.get("/proc/1/cgroup"))) {
+                String cgroup = java.nio.file.Files.readString(java.nio.file.Paths.get("/proc/1/cgroup"));
+                if (cgroup.contains("docker") || cgroup.contains("kubepods")) return true;
+            }
+        } catch (Exception ignored) {}
+        return false;
+    }
 }

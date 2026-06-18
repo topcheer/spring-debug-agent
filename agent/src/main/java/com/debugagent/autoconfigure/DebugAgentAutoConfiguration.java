@@ -160,6 +160,28 @@ public class DebugAgentAutoConfiguration {
     }
 
     // ================================================================
+    //  Inspectors — new in v0.4.0
+    // ================================================================
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.transaction.PlatformTransactionManager")
+    public TransactionInspector transactionInspector() {
+        return new TransactionInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.web.client.RestTemplate")
+    public RestClientInspector restClientInspector() {
+        return new RestClientInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.web.servlet.DispatcherServlet")
+    public EndpointTestInspector endpointTestInspector() {
+        return new EndpointTestInspector();
+    }
+
+    // ================================================================
     //  Core engine wiring
     // ================================================================
 
@@ -209,6 +231,9 @@ public class DebugAgentAutoConfiguration {
         addIfExists(ctx, HttpClientInspector.class, inspectors);
         addIfExists(ctx, FeatureFlagInspector.class, inspectors);
         addIfExists(ctx, MetricsInspector.class, inspectors);
+        addIfExists(ctx, TransactionInspector.class, inspectors);
+        addIfExists(ctx, RestClientInspector.class, inspectors);
+        addIfExists(ctx, EndpointTestInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {

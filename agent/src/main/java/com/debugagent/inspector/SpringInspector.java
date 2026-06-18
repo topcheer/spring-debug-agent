@@ -295,4 +295,184 @@ public class SpringInspector implements ApplicationContextAware {
         }
         return str;
     }
+
+    // ==================== Bean Methods & Annotations ====================
+
+    @DebugTool(description = "List all public methods of a Spring bean, including parameter types and return type. Useful for understanding a bean's API without reading source code.")
+    public List<Map<String, Object>> getBeanMethods(
+            @ToolParam(description = "Bean name or type", required = true) String beanName
+    ) {
+        Object bean = resolveBean(beanName);
+        if (bean == null) {
+            return Collections.singletonList(Map.of("error", "Bean not found: " + beanName));
+        }
+
+        List<Map<String, Object>> methods = new ArrayList<>();
+        Class<?> clazz = bean.getClass();
+        Set<String> seen = new HashSet<>();
+
+        // Walk class hierarchy
+        while (clazz != null && clazz != Object.class) {
+            for (java.lang.reflect.Method m : clazz.getDeclaredMethods()) {
+                if (!java.lang.reflect.Modifier.isPublic(m.getModifiers())) continue;
+                if (m.isSynthetic() || m.isBridge()) continue;
+
+                String sig = m.getName() + "(" + Arrays.toString(m.getParameterTypes()) + ")";
+                if (seen.contains(sig)) continue;
+                seen.add(sig);
+
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("name", m.getName());
+                info.put("returnType", m.getReturnType().getSimpleName());
+                info.put("declaringClass", m.getDeclaringClass().getSimpleName());
+
+                // Parameters
+                List<Map<String, String>> params = new ArrayList<>();
+                java.lang.reflect.Parameter[] parameters = m.getParameters();
+                java.lang.annotation.Annotation[][] paramAnnotations = m.getParameterAnnotations();
+                for (int i = 0; i < parameters.length; i++) {
+                    Map<String, String> param = new LinkedHashMap<>();
+                    param.put("type", parameters[i].getType().getSimpleName());
+                    param.put("name", parameters[i].isNamePresent() ? parameters[i].getName() : "arg" + i);
+                    // Check for @RequestParam, @PathVariable, etc.
+                    for (java.lang.annotation.Annotation a : paramAnnotations[i]) {
+                        String annName = a.annotationType().getSimpleName();
+                        if (annName.equals("RequestParam") || annName.equals("PathVariable")
+                                || annName.equals("RequestBody") || annName.equals("RequestHeader")) {
+                            param.put("annotation", annName);
+                        }
+                    }
+                    params.add(param);
+                }
+                info.put("parameters", params);
+                info.put("parameterCount", params.size());
+
+                // Annotations on the method
+                List<String> methodAnnotations = new ArrayList<>();
+                for (java.lang.annotation.Annotation a : m.getAnnotations()) {
+                    methodAnnotations.add(a.annotationType().getSimpleName());
+                }
+                if (!methodAnnotations.isEmpty()) {
+                    info.put("annotations", methodAnnotations);
+                }
+
+                methods.add(info);
+            }
+            clazz = clazz.getSuperclass();
+        }
+
+        return methods;
+    }
+
+    @DebugTool(description = "Get all annotations on a Spring bean class and its fields. Shows @Transactional, @Cacheable, @Scheduled, @Service, etc. Useful for understanding a bean's behavior configuration.")
+    public Map<String, Object> getBeanAnnotations(
+            @ToolParam(description = "Bean name or type", required = true) String beanName
+    ) {
+        Object bean = resolveBean(beanName);
+        if (bean == null) {
+            return Map.of("error", "Bean not found: " + beanName);
+        }
+
+        Map<String, Object> result = new LinkedHashMap<>();
+        result.put("beanName", beanName);
+        result.put("className", bean.getClass().getName());
+
+        // Class-level annotations
+        List<Map<String, Object>> classAnnotations = new ArrayList<>();
+        Class<?> clazz = bean.getClass();
+        for (java.lang.annotation.Annotation a : clazz.getAnnotations()) {
+            Map<String, Object> annInfo = new LinkedHashMap<>();
+            annInfo.put("type", a.annotationType().getSimpleName());
+            annInfo.put("fullName", a.annotationType().getName());
+            // Try to extract annotation values
+            try {
+                Map<String, Object> values = new LinkedHashMap<>();
+                for (java.lang.reflect.Method am : a.annotationType().getDeclaredMethods()) {
+                    Object val = am.invoke(a);
+                    if (val != null && !val.equals(am.getDefaultValue())) {
+                        values.put(am.getName(), val.toString());
+                    }
+                }
+                if (!values.isEmpty()) annInfo.put("attributes", values);
+            } catch (Exception ignored) {}
+            classAnnotations.add(annInfo);
+        }
+        result.put("classAnnotations", classAnnotations);
+
+        // Field-level annotations
+        List<Map<String, Object>> fieldAnnotations = new ArrayList<>();
+        Class<?> fieldClazz = bean.getClass();
+        while (fieldClazz != null && fieldClazz != Object.class) {
+            for (Field f : fieldClazz.getDeclaredFields()) {
+                java.lang.annotation.Annotation[] anns = f.getAnnotations();
+                if (anns.length == 0) continue;
+                Map<String, Object> fieldInfo = new LinkedHashMap<>();
+                fieldInfo.put("field", f.getName());
+                fieldInfo.put("type", f.getType().getSimpleName());
+                List<String> fieldAnns = new ArrayList<>();
+                for (java.lang.annotation.Annotation a : anns) {
+                    fieldAnns.add(a.annotationType().getSimpleName());
+                }
+                fieldInfo.put("annotations", fieldAnns);
+                fieldAnnotations.add(fieldInfo);
+            }
+            fieldClazz = fieldClazz.getSuperclass();
+        }
+        result.put("fieldAnnotations", fieldAnnotations);
+
+        return result;
+    }
+
+    @DebugTool(description = "Get all configuration properties from a specific property source (e.g., 'applicationConfig', 'systemEnvironment', 'commandLineArgs'). More detailed than get_property.")
+    public Map<String, Object> getEnvironmentProperties(
+            @ToolParam(description = "Filter by property source name (case-insensitive partial match). Leave empty to list all sources.") String sourceFilter
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        if (ctx.getEnvironment() instanceof org.springframework.core.env.ConfigurableEnvironment configEnv) {
+            List<Map<String, Object>> sourceList = new ArrayList<>();
+            org.springframework.core.env.MutablePropertySources sources = configEnv.getPropertySources();
+
+            for (org.springframework.core.env.PropertySource<?> ps : sources) {
+                String name = ps.getName();
+                if (sourceFilter != null && !sourceFilter.isBlank()
+                        && !name.toLowerCase().contains(sourceFilter.toLowerCase())) {
+                    continue;
+                }
+
+                Map<String, Object> sourceInfo = new LinkedHashMap<>();
+                sourceInfo.put("name", name);
+                sourceInfo.put("priority", sources.precedenceOf(ps));
+
+                if (ps.getSource() instanceof Map<?, ?> map) {
+                    Map<String, String> props = new TreeMap<>();
+                    for (Map.Entry<?, ?> entry : map.entrySet()) {
+                        String key = String.valueOf(entry.getKey());
+                        String val = String.valueOf(entry.getValue());
+                        if (isSensitive(key)) val = maskValue(val);
+                        if (val.length() > 500) val = val.substring(0, 500) + "... (truncated)";
+                        props.put(key, val);
+                    }
+                    sourceInfo.put("propertyCount", props.size());
+                    sourceInfo.put("properties", props);
+                } else {
+                    sourceInfo.put("sourceType", ps.getSource().getClass().getSimpleName());
+                }
+                sourceList.add(sourceInfo);
+            }
+
+            result.put("sources", sourceList);
+            result.put("totalSources", sourceList.size());
+        } else {
+            result.put("error", "Environment is not a ConfigurableEnvironment");
+        }
+
+        return result;
+    }
+
+    private boolean isSensitive(String key) {
+        String lower = key.toLowerCase();
+        return lower.contains("password") || lower.contains("secret") || lower.contains("key")
+                || lower.contains("token") || lower.contains("credential");
+    }
 }
