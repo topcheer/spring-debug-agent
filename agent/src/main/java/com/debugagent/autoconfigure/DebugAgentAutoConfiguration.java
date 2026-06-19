@@ -245,6 +245,112 @@ public class DebugAgentAutoConfiguration {
     }
 
     // ================================================================
+    //  Inspectors — new in v0.6.0 (Tier S)
+    // ================================================================
+
+    @Bean
+    @ConditionalOnClass(name = "io.micrometer.tracing.Tracer")
+    public TracingInspector tracingInspector() {
+        return new TracingInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.data.mongodb.core.MongoTemplate")
+    public MongoDbInspector mongoDbInspector() {
+        return new MongoDbInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.data.elasticsearch.core.ElasticsearchOperations")
+    public ElasticsearchInspector elasticsearchInspector() {
+        return new ElasticsearchInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "io.grpc.ManagedChannel")
+    public GrpcInspector grpcInspector() {
+        return new GrpcInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.web.socket.WebSocketHandler")
+    public WebSocketInspector webSocketInspector() {
+        return new WebSocketInspector();
+    }
+
+    // ================================================================
+    //  Inspectors — new in v0.6.0 (Tier A)
+    // ================================================================
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.batch.core.repository.JobRepository")
+    public BatchInspector batchInspector() {
+        return new BatchInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.security.oauth2.server.authorization.AuthorizationServerSettings")
+    public OAuth2Inspector oAuth2Inspector() {
+        return new OAuth2Inspector();
+    }
+
+    @Bean
+    public ThreadPoolInspector threadPoolInspector() {
+        return new ThreadPoolInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.modulith.core.ApplicationModules")
+    public ModulithInspector modulithInspector() {
+        return new ModulithInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.quartz.Scheduler")
+    public QuartzInspector quartzInspector() {
+        return new QuartzInspector();
+    }
+
+    // ================================================================
+    //  Inspectors — new in v0.6.0 (Tier B)
+    // ================================================================
+
+    @Bean
+    @ConditionalOnClass(name = "io.minio.MinioClient")
+    public ObjectStorageInspector objectStorageInspector() {
+        return new ObjectStorageInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.vault.core.VaultTemplate")
+    public VaultInspector vaultInspector() {
+        return new VaultInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "com.hazelcast.core.HazelcastInstance")
+    public DistributedCacheInspector distributedCacheInspector() {
+        return new DistributedCacheInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.statemachine.StateMachine")
+    public StateMachineInspector stateMachineInspector() {
+        return new StateMachineInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.graphql.execution.GraphQlSource")
+    public GraphQLInspector graphQLInspector() {
+        return new GraphQLInspector();
+    }
+
+    @Bean
+    public OpenApiInspector openApiInspector() {
+        return new OpenApiInspector();
+    }
+
+    // ================================================================
     //  Core engine wiring
     // ================================================================
 
@@ -308,6 +414,25 @@ public class DebugAgentAutoConfiguration {
         addIfExists(ctx, ReactiveInspector.class, inspectors);
         addIfExists(ctx, MigrationInspector.class, inspectors);
         addIfExists(ctx, CloudInspector.class, inspectors);
+        // v0.6.0 Tier S
+        addIfExists(ctx, TracingInspector.class, inspectors);
+        addIfExists(ctx, MongoDbInspector.class, inspectors);
+        addIfExists(ctx, ElasticsearchInspector.class, inspectors);
+        addIfExists(ctx, GrpcInspector.class, inspectors);
+        addIfExists(ctx, WebSocketInspector.class, inspectors);
+        // v0.6.0 Tier A
+        addIfExists(ctx, BatchInspector.class, inspectors);
+        addIfExists(ctx, OAuth2Inspector.class, inspectors);
+        addIfExists(ctx, ThreadPoolInspector.class, inspectors);
+        addIfExists(ctx, ModulithInspector.class, inspectors);
+        addIfExists(ctx, QuartzInspector.class, inspectors);
+        // v0.6.0 Tier B
+        addIfExists(ctx, ObjectStorageInspector.class, inspectors);
+        addIfExists(ctx, VaultInspector.class, inspectors);
+        addIfExists(ctx, DistributedCacheInspector.class, inspectors);
+        addIfExists(ctx, StateMachineInspector.class, inspectors);
+        addIfExists(ctx, GraphQLInspector.class, inspectors);
+        addIfExists(ctx, OpenApiInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {

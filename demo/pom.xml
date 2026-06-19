@@ -35,7 +35,7 @@
         <dependency>
             <groupId>dev.ggcode</groupId>
             <artifactId>spring-debug-agent</artifactId>
-            <version>0.4.1-SNAPSHOT</version>
+            <version>0.5.1-SNAPSHOT</version>
         </dependency>
 
         <!-- Spring Boot Starters -->
@@ -104,6 +104,56 @@
         <dependency>
             <groupId>org.flywaydb</groupId>
             <artifactId>flyway-core</artifactId>
+        </dependency>
+
+        <!-- MongoDB — for MongoDbInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-mongodb</artifactId>
+        </dependency>
+
+        <!-- Elasticsearch — for ElasticsearchInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-elasticsearch</artifactId>
+        </dependency>
+
+        <!-- WebSocket — for WebSocketInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-websocket</artifactId>
+        </dependency>
+
+        <!-- Spring Batch — for BatchInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-batch</artifactId>
+        </dependency>
+
+        <!-- Quartz — for QuartzInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-quartz</artifactId>
+        </dependency>
+
+        <!-- GraphQL — for GraphQLInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-graphql</artifactId>
+        </dependency>
+
+        <!-- OpenAPI / Swagger — for OpenApiInspector demo -->
+        <dependency>
+            <groupId>org.springdoc</groupId>
+            <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+            <version>2.6.0</version>
+        </dependency>
+
+        <!-- Spring Modulith — for ModulithInspector demo -->
+        <dependency>
+            <groupId>org.springframework.modulith</groupId>
+            <artifactId>spring-modulith-starter-core</artifactId>
+            <version>1.3.0</version>
         </dependency>
 
         <!-- Test -->

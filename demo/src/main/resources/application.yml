@@ -27,6 +27,12 @@ spring:
     redis:
       host: localhost
       port: 6379
+    mongodb:
+      uri: mongodb://localhost:27017/demo_db
+
+  # Elasticsearch
+  elasticsearch:
+    uris: http://localhost:9200
 
   # Kafka
   kafka:
