@@ -182,6 +182,69 @@ public class DebugAgentAutoConfiguration {
     }
 
     // ================================================================
+    //  Inspectors — new in v0.5.0
+    // ================================================================
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.security.config.annotation.web.configuration.EnableWebSecurity")
+    public SecurityInspector securityInspector() {
+        return new SecurityInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "javax.sql.DataSource")
+    public SqlInspector sqlInspector() {
+        return new SqlInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "jakarta.servlet.http.HttpSession")
+    public HttpSessionInspector httpSessionInspector() {
+        return new HttpSessionInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.data.redis.connection.RedisConnectionFactory")
+    public RedisInspector redisInspector() {
+        return new RedisInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.kafka.config.KafkaListenerEndpointRegistry")
+    public MessagingInspector messagingInspector() {
+        return new MessagingInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry")
+    public ResilienceInspector resilienceInspector() {
+        return new ResilienceInspector();
+    }
+
+    @Bean
+    public ProfilingInspector profilingInspector() {
+        return new ProfilingInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "reactor.core.publisher.Flux")
+    public ReactiveInspector reactiveInspector() {
+        return new ReactiveInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.flywaydb.core.Flyway")
+    public MigrationInspector migrationInspectorFlyway() {
+        return new MigrationInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.cloud.client.discovery.DiscoveryClient")
+    public CloudInspector cloudInspector() {
+        return new CloudInspector();
+    }
+
+    // ================================================================
     //  Core engine wiring
     // ================================================================
 
@@ -234,6 +297,17 @@ public class DebugAgentAutoConfiguration {
         addIfExists(ctx, TransactionInspector.class, inspectors);
         addIfExists(ctx, RestClientInspector.class, inspectors);
         addIfExists(ctx, EndpointTestInspector.class, inspectors);
+        // v0.5.0 inspectors
+        addIfExists(ctx, SecurityInspector.class, inspectors);
+        addIfExists(ctx, SqlInspector.class, inspectors);
+        addIfExists(ctx, HttpSessionInspector.class, inspectors);
+        addIfExists(ctx, RedisInspector.class, inspectors);
+        addIfExists(ctx, MessagingInspector.class, inspectors);
+        addIfExists(ctx, ResilienceInspector.class, inspectors);
+        addIfExists(ctx, ProfilingInspector.class, inspectors);
+        addIfExists(ctx, ReactiveInspector.class, inspectors);
+        addIfExists(ctx, MigrationInspector.class, inspectors);
+        addIfExists(ctx, CloudInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {

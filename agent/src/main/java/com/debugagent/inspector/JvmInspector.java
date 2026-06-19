@@ -453,4 +453,191 @@ public class JvmInspector {
         } catch (Exception ignored) {}
         return false;
     }
+
+    // ==================== Thread Contention ====================
+
+    @DebugTool(description = "Get thread lock contention analysis: which threads are blocked, what locks they're waiting for, and who holds those locks. Essential for diagnosing performance bottlenecks from lock contention.")
+    public Map<String, Object> getThreadContention() {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
+        long[] deadlocked = tmx.findMonitorDeadlockedThreads();
+        long[] monitorDeadlocked = tmx.findDeadlockedThreads();
+
+        result.put("monitorDeadlockDetected", deadlocked != null && deadlocked.length > 0);
+        result.put("anyDeadlockDetected", monitorDeadlocked != null && monitorDeadlocked.length > 0);
+
+        // Get all threads
+        java.lang.management.ThreadInfo[] infos = tmx.dumpAllThreads(false, false);
+        List<Map<String, Object>> blockedThreads = new ArrayList<>();
+        List<Map<String, Object>> waitingThreads = new ArrayList<>();
+
+        for (java.lang.management.ThreadInfo info : infos) {
+            Thread.State state = info.getThreadState();
+
+            if (state == Thread.State.BLOCKED) {
+                Map<String, Object> t = new LinkedHashMap<>();
+                t.put("threadId", info.getThreadId());
+                t.put("name", info.getThreadName());
+                t.put("state", state.toString());
+                String lockName = info.getLockName();
+                String lockOwner = info.getLockOwnerName();
+                t.put("waitingForLock", lockName);
+                t.put("lockOwner", lockOwner != null ? lockOwner : "unknown");
+                t.put("blockedTime", info.getBlockedTime() >= 0 ? info.getBlockedTime() + "ms" : "n/a");
+                t.put("waitedCount", info.getWaitedCount());
+                t.put("blockedCount", info.getBlockedCount());
+                // Top frame
+                StackTraceElement[] stack = info.getStackTrace();
+                if (stack.length > 0) {
+                    t.put("topFrame", stack[0].toString());
+                }
+                blockedThreads.add(t);
+            } else if (state == Thread.State.WAITING || state == Thread.State.TIMED_WAITING) {
+                if (blockedThreads.size() + waitingThreads.size() < 50) {
+                    Map<String, Object> t = new LinkedHashMap<>();
+                    t.put("threadId", info.getThreadId());
+                    t.put("name", info.getThreadName());
+                    t.put("state", state.toString());
+                    t.put("waitingForLock", info.getLockName());
+                    t.put("waitedCount", info.getWaitedCount());
+                    t.put("waitedTime", info.getWaitedTime() >= 0 ? info.getWaitedTime() + "ms" : "n/a");
+                    waitingThreads.add(t);
+                }
+            }
+        }
+
+        result.put("blockedThreads", blockedThreads);
+        result.put("blockedCount", blockedThreads.size());
+        result.put("waitingThreads", waitingThreads);
+        result.put("waitingCount", waitingThreads.size());
+
+        // Contention monitoring status
+        result.put("threadContentionMonitoringEnabled", tmx.isThreadContentionMonitoringEnabled());
+        if (!tmx.isThreadContentionMonitoringEnabled()) {
+            result.put("hint", "Thread contention monitoring is disabled. " +
+                    "Call with -XX:+PrintConcurrentLocks or enable via JMX for blocked time data.");
+        }
+
+        return result;
+    }
+
+    @DebugTool(description = "Build a lock ownership map: which threads hold which locks, and which threads are waiting on those locks. Returns a graph of lock dependencies. Useful for understanding complex contention patterns.")
+    public List<Map<String, Object>> getLockOwners() {
+        List<Map<String, Object>> owners = new ArrayList<>();
+
+        ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
+        java.lang.management.ThreadInfo[] infos = tmx.dumpAllThreads(true, false);
+
+        // Map: lockName -> owner thread
+        Map<String, String> lockToOwner = new HashMap<>();
+        Map<String, List<String>> lockToWaiters = new HashMap<>();
+
+        for (java.lang.management.ThreadInfo info : infos) {
+            String name = info.getThreadName();
+            String lockName = info.getLockName();
+            String lockOwner = info.getLockOwnerName();
+
+            if (lockName != null && lockOwner != null) {
+                lockToOwner.put(lockName, lockOwner);
+            }
+
+            if (lockName != null && (info.getThreadState() == Thread.State.BLOCKED
+                    || info.getThreadState() == Thread.State.WAITING)) {
+                lockToWaiters.computeIfAbsent(lockName, k -> new ArrayList<>()).add(name);
+            }
+        }
+
+        // Build ownership list
+        for (Map.Entry<String, List<String>> entry : lockToWaiters.entrySet()) {
+            String lock = entry.getKey();
+            String owner = lockToOwner.get(lock);
+            if (owner == null) owner = "unknown";
+
+            Map<String, Object> info = new LinkedHashMap<>();
+            info.put("lock", lock);
+            info.put("owner", owner);
+            info.put("waitingThreads", entry.getValue());
+            info.put("waiterCount", entry.getValue().size());
+            owners.add(info);
+        }
+
+        // Sort by waiter count descending
+        owners.sort((a, b) -> Integer.compare(
+                ((List<?>) b.get("waitingThreads")).size(),
+                ((List<?>) a.get("waitingThreads")).size()));
+
+        return owners;
+    }
+
+    @DebugTool(description = "Build a deadlock dependency graph. If deadlocks are detected, shows the exact cycle of threads blocking each other. Critical for diagnosing deadlocks in production.")
+    public Map<String, Object> getDeadlockGraph() {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        ThreadMXBean tmx = ManagementFactory.getThreadMXBean();
+        long[] deadlocked = tmx.findMonitorDeadlockedThreads();
+        long[] allDeadlocked = tmx.findDeadlockedThreads();
+
+        if (allDeadlocked == null || allDeadlocked.length == 0) {
+            result.put("deadlockDetected", false);
+            result.put("message", "No deadlocks detected.");
+            return result;
+        }
+
+        result.put("deadlockDetected", true);
+        result.put("deadlockedThreadCount", allDeadlocked.length);
+
+        // Get details of deadlocked threads
+        java.lang.management.ThreadInfo[] infos = tmx.getThreadInfo(allDeadlocked, true, true);
+        List<Map<String, Object>> cycle = new ArrayList<>();
+
+        for (java.lang.management.ThreadInfo info : infos) {
+            if (info == null) continue;
+            Map<String, Object> t = new LinkedHashMap<>();
+            t.put("threadId", info.getThreadId());
+            t.put("threadName", info.getThreadName());
+            t.put("state", info.getThreadState().toString());
+            t.put("lockWaitingFor", info.getLockName());
+            t.put("lockOwnerId", info.getLockOwnerId());
+            t.put("lockOwnerName", info.getLockOwnerName());
+
+            // Full stack trace
+            StackTraceElement[] stack = info.getStackTrace();
+            List<String> frames = new ArrayList<>();
+            for (StackTraceElement frame : stack) {
+                frames.add(frame.toString());
+            }
+            t.put("stackTrace", frames);
+
+            // Locked monitors and synchronizers
+            java.lang.management.MonitorInfo[] monitors = info.getLockedMonitors();
+            List<String> lockedMonitors = new ArrayList<>();
+            for (java.lang.management.MonitorInfo m : monitors) {
+                lockedMonitors.add(m.getIdentityHashCode() + " @ " + m.getLockedStackFrame());
+            }
+            t.put("lockedMonitors", lockedMonitors);
+
+            java.lang.management.LockInfo[] synchronizers = info.getLockedSynchronizers();
+            List<String> lockedSyncs = new ArrayList<>();
+            for (java.lang.management.LockInfo l : synchronizers) {
+                lockedSyncs.add(l.toString());
+            }
+            t.put("lockedSynchronizers", lockedSyncs);
+
+            cycle.add(t);
+        }
+
+        result.put("deadlockCycle", cycle);
+
+        // Build graph description
+        List<String> graphEdges = new ArrayList<>();
+        for (java.lang.management.ThreadInfo info : infos) {
+            if (info != null && info.getLockOwnerName() != null) {
+                graphEdges.add(info.getThreadName() + " --waiting on lock held by--> " + info.getLockOwnerName());
+            }
+        }
+        result.put("dependencyGraph", graphEdges);
+
+        return result;
+    }
 }

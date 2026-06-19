@@ -2,7 +2,7 @@
 
 An AI-powered debugging agent that **embeds directly into your Spring Boot application**. Add one dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
 
-> **80 diagnostic tools** across **24 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
+> **112 diagnostic tools** across **34 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
 
 ## Why?
 
@@ -21,6 +21,12 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 | Full System Audit | Deep dive across all subsystems | runtime_info, environment, metrics, CPU threads |
 | Transaction Debug | Transaction status + rollback tracking | transaction_info, transaction_stats, rollback_history |
 | API Smoke Test | Batch endpoint testing + coverage | test_endpoint_batch, endpoint_coverage, compare_endpoints |
+| Security Audit | Security config + auth + sessions | security_config, authentication_info, session_info |
+| SQL Deep Dive | Slow queries + connection leaks | active_sql_queries, slow_sql, detect_connection_leak |
+| Redis Inspection | Server info + slowlog + key details | redis_info, redis_slowlog, redis_key_info |
+| Resilience Health | Circuit breakers + retry + rate limits | circuit_breakers, retry_stats, rate_limiters |
+| Profiling Hotspots | CPU + allocation sampling | cpu_hotspots, allocation_hotspots |
+| DB Migration Status | Flyway history + pending migrations | db_migrations, pending_migrations |
 
 > All recordings were captured automatically via Playwright. See `demo-record.js` to record your own.
 
@@ -32,7 +38,7 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 <dependency>
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.4.0</version>
+    <version>0.5.0</version>
 </dependency>
 ```
 
@@ -66,7 +72,7 @@ That's it. The agent auto-configures via Spring Boot Starter — no code changes
 ### Gradle
 
 ```groovy
-implementation 'dev.ggcode:spring-debug-agent:0.4.0'
+implementation 'dev.ggcode:spring-debug-agent:0.5.0'
 ```
 
 ## Supported LLM Providers
@@ -84,9 +90,9 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 
 ---
 
-## Diagnostic Tools (80 total)
+## Diagnostic Tools (112 total)
 
-### JVM Diagnostics (`JvmInspector` — 13 tools)
+### JVM Diagnostics (`JvmInspector` — 16 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -103,6 +109,9 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 | `trigger_gc` | Trigger garbage collection and show before/after comparison |
 | `get_system_properties` | JVM system properties (java.version, os.name, etc.) with prefix filtering |
 | `get_process_info` | Process-level info: PID, CPU usage, memory limits, container detection |
+| `get_thread_contention` | Thread lock contention analysis: blocked threads, lock owners, wait times |
+| `get_lock_owners` | Lock ownership map: which threads hold locks, which threads are waiting |
+| `get_deadlock_graph` | Deadlock dependency graph with full cycle and stack traces |
 
 ### Memory & Compilation (`CompilationInspector` — 3 tools)
 
@@ -245,6 +254,94 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | `get_feature_flags` | `FeatureFlagInspector` | Auto-configuration condition evaluation report |
 | `get_environment_diff` | `EnvironmentInspector` | Active property sources and configuration |
 
+### Spring Security (`SecurityInspector` — 4 tools)  *v0.5.0*
+*Requires Spring Security on classpath*
+
+| Tool | Description |
+|------|-------------|
+| `get_security_config` | Security filter chains, user details services, password encoder, auth managers |
+| `get_authentication_info` | Current authentication: principal, roles, authorities, credentials |
+| `get_session_info` | Active HTTP sessions: count, attributes, timeout config |
+| `get_security_events` | Security event listeners and audit configuration |
+
+### Deep SQL Diagnostics (`SqlInspector` — 3 tools)  *v0.5.0*
+*Requires javax.sql.DataSource*
+
+| Tool | Description |
+|------|-------------|
+| `get_active_sql_queries` | Database metadata, connection info, table list, pool stats |
+| `get_slow_sql` | Slow SQL queries from Hibernate statistics (execution time, row count) |
+| `detect_connection_leak` | Connection pool leak detection: exhaustion, utilization, warnings |
+
+### HTTP Session Management (`HttpSessionInspector` — 3 tools)  *v0.5.0*
+*Requires Servlet API*
+
+| Tool | Description |
+|------|-------------|
+| `get_http_sessions` | Session statistics: active count, timeout, cookie config |
+| `get_session_attributes` | Inspect specific session attributes by ID |
+| `invalidate_session` | Destroy an HTTP session (force logout / clear state) |
+
+### Redis Diagnostics (`RedisInspector` — 3 tools)  *v0.5.0*
+*Requires Spring Data Redis*
+
+| Tool | Description |
+|------|-------------|
+| `get_redis_info` | Server info: version, memory, clients, keyspace stats |
+| `get_redis_slowlog` | Redis slow query log with command and duration |
+| `get_redis_key_info` | Inspect a specific key: type, TTL, value preview |
+
+### Messaging (`MessagingInspector` — 3 tools)  *v0.5.0*
+*Requires Spring Kafka or Spring AMQP*
+
+| Tool | Description |
+|------|-------------|
+| `get_kafka_consumers` | Kafka listener containers: topics, group IDs, pause status |
+| `get_queue_info` | Queue/topic info for Kafka and RabbitMQ |
+| `get_dead_letter_queues` | Dead letter queue handlers and error topic detection |
+
+### Resilience (`ResilienceInspector` — 4 tools)  *v0.5.0*
+*Requires Resilience4j*
+
+| Tool | Description |
+|------|-------------|
+| `get_circuit_breakers` | Circuit breaker instances: state, failure rate, config |
+| `get_retry_stats` | Retry config and stats: attempts, success/failure counts |
+| `get_rate_limiters` | Rate limiter instances: available permissions, waiting threads |
+| `get_rate_limit_stats` | Rate limiter utilization: throttling rate, used vs. limit |
+
+### CPU & Memory Profiling (`ProfilingInspector` — 2 tools)  *v0.5.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_cpu_hotspots` | Sample CPU hotspots: top methods by CPU time via thread sampling |
+| `get_allocation_hotspots` | Sample memory allocation: top allocating threads by bytes |
+
+### Reactive / WebFlux (`ReactiveInspector` — 2 tools)  *v0.5.0*
+*Requires Project Reactor*
+
+| Tool | Description |
+|------|-------------|
+| `get_reactive_streams` | Reactive stream info: schedulers, WebClient, context API |
+| `get_event_loop_status` | Netty event loop threads: active/blocked, blocking I/O detection |
+
+### Database Migrations (`MigrationInspector` — 2 tools)  *v0.5.0*
+*Requires Flyway or Liquibase*
+
+| Tool | Description |
+|------|-------------|
+| `get_db_migrations` | Applied migrations, schema version, migration history |
+| `get_pending_migrations` | Unapplied migration scripts: version, description, file path |
+
+### Spring Cloud (`CloudInspector` — 3 tools)  *v0.5.0*
+*Requires Spring Cloud*
+
+| Tool | Description |
+|------|-------------|
+| `get_service_discovery` | Service discovery (Eureka/Consul/Nacos): registered services, instances |
+| `get_config_server_status` | Spring Cloud Config: config server URI, refresh scope, property sources |
+| `get_cloud_circuit_breakers` | Spring Cloud circuit breaker abstraction: instances and implementations |
+
 ### Classloading & System (3 tools)
 
 | Tool | Description |
@@ -270,7 +367,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 │  │  └──────────┘     └────┬─────┘     └─────────────┘     │ │
 │  │                         │                                │ │
 │  │    ┌────────────────────┼────────────────────────┐      │ │
-│  │    │        24 Inspectors (80 tools)             │      │ │
+│  │    │        34 Inspectors (112 tools)            │      │ │
 │  │    │                    │                        │      │ │
 │  │  ┌─▼──┐ ┌────┐ ┌──────┐ ┌─────┐ ┌─────┐ ┌─────┐ │      │ │
 │  │  │JVM │ │Spng│ │Watch │ │ JMX │ │Reqs │ │Metrc│ │      │ │
@@ -303,7 +400,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | Decision | Rationale |
 |----------|-----------|
 | **Embedded** (not external attach) | Zero friction — works in any IDE, no JVM attach permissions |
-| **80 tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
+| **112 tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
 | **Custom HTTP client** (not Spring AI) | Minimal dependencies, works with any OpenAI-compatible endpoint |
 | **ByteBuddy** (not JDI) | Runtime bytecode enhancement, no separate agent process |
 | **Self-contained UI** (no CDN) | Works in enterprise environments with no internet access |
@@ -329,7 +426,7 @@ spring-debug-agent/
 │       │   ├── annotation/          # @DebugTool, @ToolParam
 │       │   ├── ToolRegistry.java    # Discovers and registers tools
 │       │   └── ToolExecutor.java    # Invokes tools, marshals args
-│       ├── inspector/               # 24 diagnostic inspectors (80 tools)
+│       ├── inspector/               # 34 diagnostic inspectors (112 tools)
 │       │   ├── JvmInspector.java        # Threads, memory, GC, heap, process info
 │       │   ├── SpringInspector.java      # Beans, config, annotations, methods
 │       │   ├── MBeanInspector.java       # JMX MBean browsing
@@ -352,6 +449,7 @@ spring-debug-agent/
 ├── e2e-tests/                       # End-to-end test suite (80 tools)
 │   ├── fast-e2e-test.js             # Fast batch test runner (original 55 tools)
 │   ├── new-tools-test.js            # v0.4.0 new tools test (25 tools)
+│   ├── v05-new-tools-test.js        # v0.5.0 new tools test (32 tools)
 │   ├── jvm-spring-tests.js          # JVM/Spring tool tests
 │   ├── infra-web-tests.js           # Infrastructure/Web tool tests
 │   ├── watchpoint-tests.js          # WatchPoint lifecycle tests
@@ -411,10 +509,16 @@ Then open `http://localhost:8080/agent` and try asking:
 - "Search logs for 'order' and show log statistics"
 - "Test the /api/orders endpoint and batch-test all GET endpoints"
 - "Show me the servlet filter chains and endpoint coverage"
+- "Show me the Spring Security configuration and authentication details"
+- "Are there any slow SQL queries? Check for connection leaks"
+- "What's the Redis server info? Show me the slowlog"
+- "Check all circuit breakers and retry stats"
+- "Profile CPU hotspots for 3 seconds"
+- "Show me the database migration history and pending migrations"
 
 ### E2E Test Suite
 
-All 80 tools are covered by automated E2E tests:
+All 112 tools are covered by automated E2E tests:
 
 ```bash
 # 1. Generate test data (orders, HTTP traffic, logs, cache)
@@ -423,8 +527,8 @@ bash e2e-data-setup.sh
 # 2. Run the fast E2E test (original 55 tools, 6 groups, ~5 min)
 node e2e-tests/fast-e2e-test.js
 
-# 3. Run the new tools test (v0.4.0 additions, 25 tools, 5 batches)
-node e2e-tests/new-tools-test.js
+# 3. Run the v0.5.0 new tools test (32 tools, 8 batches)
+node e2e-tests/v05-new-tools-test.js
 
 # Or run individual test suites:
 node e2e-tests/jvm-spring-tests.js      # 23 JVM/Spring tools
@@ -453,8 +557,8 @@ mvn clean package -DskipTests
 Releases are fully automated via GitHub Actions:
 
 ```bash
-git tag v0.4.0
-git push origin v0.4.0
+git tag v0.5.0
+git push origin v0.5.0
 ```
 
 The CI pipeline will:
