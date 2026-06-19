@@ -2,7 +2,7 @@
 
 An AI-powered debugging agent that **embeds directly into your Spring Boot application**. Add one dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
 
-> **55 diagnostic tools** across **21 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
+> **80 diagnostic tools** across **24 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
 
 ## Why?
 
@@ -17,8 +17,10 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 | Connection Pool Health | HikariCP stats + DB diagnostics | data_source, health, jpa_query_stats |
 | REST API Discovery | Endpoint listing + runtime method invocation | http_endpoints, invoke_bean_method, cache_stats |
 | Memory Leak Hunt | Heap histogram + GC + buffer analysis | memory, heap_histogram, trigger_gc, buffer_pool |
-| Tasks & Logs | Scheduled tasks + live log capture | scheduled_tasks, recent_logs, feature_flags |
+| Tasks & Logs | Scheduled tasks + live log capture | scheduled_tasks, recent_logs, search_logs, log_stats |
 | Full System Audit | Deep dive across all subsystems | runtime_info, environment, metrics, CPU threads |
+| Transaction Debug | Transaction status + rollback tracking | transaction_info, transaction_stats, rollback_history |
+| API Smoke Test | Batch endpoint testing + coverage | test_endpoint_batch, endpoint_coverage, compare_endpoints |
 
 > All recordings were captured automatically via Playwright. See `demo-record.js` to record your own.
 
@@ -30,7 +32,7 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 <dependency>
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.3.0</version>
+    <version>0.4.0</version>
 </dependency>
 ```
 
@@ -64,7 +66,7 @@ That's it. The agent auto-configures via Spring Boot Starter — no code changes
 ### Gradle
 
 ```groovy
-implementation 'dev.ggcode:spring-debug-agent:0.3.0'
+implementation 'dev.ggcode:spring-debug-agent:0.4.0'
 ```
 
 ## Supported LLM Providers
@@ -82,9 +84,9 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 
 ---
 
-## Diagnostic Tools (55 total)
+## Diagnostic Tools (80 total)
 
-### JVM Diagnostics (`JvmInspector` — 11 tools)
+### JVM Diagnostics (`JvmInspector` — 13 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -99,6 +101,8 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 | `get_buffer_pool_stats` | DirectByteBuffer and MappedByteBuffer usage |
 | `get_compilation_stats` | JIT compilation time and compiler info |
 | `trigger_gc` | Trigger garbage collection and show before/after comparison |
+| `get_system_properties` | JVM system properties (java.version, os.name, etc.) with prefix filtering |
+| `get_process_info` | Process-level info: PID, CPU usage, memory limits, container detection |
 
 ### Memory & Compilation (`CompilationInspector` — 3 tools)
 
@@ -119,7 +123,7 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 
 > Covers Tomcat, HikariCP, Hibernate, Logback, JVM internals — anything registered in the platform MBean server.
 
-### Spring Core (`SpringInspector` — 8 tools)
+### Spring Core (`SpringInspector` — 11 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -131,6 +135,9 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 | `search_properties` | Search properties by keyword |
 | `get_active_profiles` | Active Spring profiles |
 | `get_context_info` | ApplicationContext metadata (startup time, bean count) |
+| `get_bean_methods` | List all public methods of a bean (params, return type, annotations) |
+| `get_bean_annotations` | Get all class-level and field-level annotations on a bean |
+| `get_environment_properties` | Full environment properties grouped by property source |
 
 ### Bean Dependency Graph (`BeanGraphInspector` — 3 tools)
 
@@ -140,7 +147,7 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 | `get_circular_references` | Detect circular dependencies in the container |
 | `get_lazy_beans` | List @Lazy beans and uninitialized singletons |
 
-### Runtime Watch Points (`WatchPointManager` — 5 tools)
+### Runtime Watch Points (`WatchPointManager` — 6 tools)
 
 | Tool | Description |
 |------|-------------|
@@ -149,18 +156,22 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 | `get_watch_results` | Retrieve captured method calls (args, return value, timing) |
 | `list_watch_points` | List all active watch points |
 | `remove_watch_point` | Remove a watch point |
+| `add_field_watch_point` | Monitor a specific field on a bean for value changes |
 
 Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart needed. Set a watch point on any loaded method, trigger the code path, and inspect what arguments were passed and what was returned.
 
-### Web & HTTP (`WebInspector` + `RequestInspector` — 6 tools)
+### Web & HTTP (`WebInspector` + `RequestInspector` — 9 tools)
 
 | Tool | Description |
 |------|-------------|
 | `get_http_endpoints` | List all `@RequestMapping` endpoints with controllers |
 | `invoke_bean_method` | Invoke any bean method at runtime with arguments |
+| `get_filter_chains` | List all registered servlet filter chains with URL patterns |
 | `get_recent_requests` | Recent HTTP requests from in-memory ring buffer |
 | `get_slow_requests` | Slowest requests sorted by duration |
 | `get_request_stats` | Request stats: P50/P95/P99 latency, status distribution, error rate |
+| `get_request_by_path` | Search HTTP request history by path (partial match) |
+| `get_error_requests` | Get all error requests (4xx/5xx) with exception traces |
 | `get_bean_field_value` | Read a specific field from a live bean |
 
 ### Metrics (`MetricsInspector` — 3 tools)  
@@ -179,7 +190,48 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | `get_recent_events` | Recently published ApplicationEvents (in-memory ring buffer) |
 | `get_event_listeners` | List all registered event listeners and their event types |
 
-### Infrastructure Inspectors (10 tools)
+### Spring Transactions (`TransactionInspector` — 5 tools)
+*Requires spring-tx on classpath (included with Spring Boot Data JPA, etc.)*
+
+| Tool | Description |
+|------|-------------|
+| `get_transaction_info` | Current thread's transaction status (active, name, isolation, propagation) |
+| `get_transaction_stats` | Transaction statistics (commits, rollbacks, avg duration, rollback rate) |
+| `get_recent_transactions` | Recent transaction execution records (method, duration, result) |
+| `get_rollback_history` | All rollback records with error details |
+| `get_slow_transactions` | Slowest transactions sorted by duration |
+
+### Outbound HTTP Tracking (`RestClientInspector` — 4 tools)
+*Requires Spring RestTemplate on classpath*
+
+| Tool | Description |
+|------|-------------|
+| `get_outbound_requests` | Recent outbound HTTP calls (URL, method, status, duration, host) |
+| `get_slow_outbound_requests` | Slowest outbound calls sorted by duration |
+| `get_outbound_request_stats` | Outbound call statistics (success rate, P95/P99 latency, by host) |
+| `get_outbound_errors` | Outbound call errors (timeouts, 4xx/5xx, exceptions) |
+
+### Active API Probing (`EndpointTestInspector` — 5 tools)
+*Requires Spring MVC on classpath*
+
+| Tool | Description |
+|------|-------------|
+| `test_endpoint` | Actively call any application API endpoint (internal loopback HTTP) |
+| `test_endpoint_batch` | Batch-test all GET endpoints in one call |
+| `test_endpoint_auth` | Test an endpoint with custom authentication headers |
+| `compare_endpoints` | Compare responses from the same endpoint on two different hosts/ports |
+| `get_endpoint_coverage` | API endpoint coverage report (called vs. never-called endpoints) |
+
+### Log Analysis (`LogInspector` — 3 tools)
+*Requires Logback on classpath (included with Spring Boot)*
+
+| Tool | Description |
+|------|-------------|
+| `get_recent_logs` | In-memory Logback log capture (ring buffer), filter by level |
+| `search_logs` | Search log entries by keyword (message + exception text) |
+| `get_log_stats` | Log statistics: count per level, error rate, most active loggers |
+
+### Infrastructure Inspectors (9 tools)
 
 | Tool | Inspector | Description |
 |------|-----------|-------------|
@@ -191,7 +243,6 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | `get_jpa_query_stats` | `JpaInspector` | Hibernate query stats (slow queries, N+1) |
 | `get_http_client_pool_stats` | `HttpClientInspector` | Apache HttpClient pool stats |
 | `get_feature_flags` | `FeatureFlagInspector` | Auto-configuration condition evaluation report |
-| `get_recent_logs` | `LogInspector` | In-memory Logback log capture (ring buffer) |
 | `get_environment_diff` | `EnvironmentInspector` | Active property sources and configuration |
 
 ### Classloading & System (3 tools)
@@ -219,16 +270,20 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 │  │  └──────────┘     └────┬─────┘     └─────────────┘     │ │
 │  │                         │                                │ │
 │  │    ┌────────────────────┼────────────────────────┐      │ │
-│  │    │        21 Inspectors (55 tools)             │      │ │
+│  │    │        24 Inspectors (80 tools)             │      │ │
 │  │    │                    │                        │      │ │
 │  │  ┌─▼──┐ ┌────┐ ┌──────┐ ┌─────┐ ┌─────┐ ┌─────┐ │      │ │
 │  │  │JVM │ │Spng│ │Watch │ │ JMX │ │Reqs │ │Metrc│ │      │ │
-│  │  │ 11 │ │ 11 │ │  5   │ │  4  │ │  4  │ │  3  │ │      │ │
+│  │  │ 13 │ │ 11 │ │  6   │ │  4  │ │  5  │ │  3  │ │      │ │
 │  │  └────┘ └────┘ └──────┘ └─────┘ └─────┘ └─────┘ │      │ │
 │  │  ┌────┐ ┌────┐ ┌──────┐ ┌─────┐ ┌─────┐ ┌─────┐ │      │ │
 │  │  │Evt │ │Bean│ │Cache │ │ JPA │ │Tasks│ │Logs │ │      │ │
-│  │  │ 2  │ │ 3  │ │  1   │ │  1  │ │  2  │ │  1  │ │      │ │
+│  │  │ 2  │ │ 3  │ │  1   │ │  1  │ │  2  │ │  3  │ │      │ │
 │  │  └────┘ └────┘ └──────┘ └─────┘ └─────┘ └─────┘ │      │ │
+│  │  ┌──────┐ ┌────────┐ ┌──────────┐ ┌──────────┐  │      │ │
+│  │  │ Txn  │ │RestCli │ │EndpointT │ │   Web    │  │      │ │
+│  │  │  5   │ │   4    │ │    5     │ │    2     │  │      │ │
+│  │  └──────┘ └────────┘ └──────────┘ └──────────┘  │      │ │
 │  └──────────────────────────────────────────────────────────┘ │
 └──────────────────────────────────────────────────────────────┘
 ```
@@ -248,7 +303,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | Decision | Rationale |
 |----------|-----------|
 | **Embedded** (not external attach) | Zero friction — works in any IDE, no JVM attach permissions |
-| **55 tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
+| **80 tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
 | **Custom HTTP client** (not Spring AI) | Minimal dependencies, works with any OpenAI-compatible endpoint |
 | **ByteBuddy** (not JDI) | Runtime bytecode enhancement, no separate agent process |
 | **Self-contained UI** (no CDN) | Works in enterprise environments with no internet access |
@@ -274,17 +329,17 @@ spring-debug-agent/
 │       │   ├── annotation/          # @DebugTool, @ToolParam
 │       │   ├── ToolRegistry.java    # Discovers and registers tools
 │       │   └── ToolExecutor.java    # Invokes tools, marshals args
-│       ├── inspector/               # 21 diagnostic inspectors (55 tools)
-│       │   ├── JvmInspector.java        # Threads, memory, GC, heap histogram
-│       │   ├── SpringInspector.java      # Beans, config, dependencies
+│       ├── inspector/               # 24 diagnostic inspectors (80 tools)
+│       │   ├── JvmInspector.java        # Threads, memory, GC, heap, process info
+│       │   ├── SpringInspector.java      # Beans, config, annotations, methods
 │       │   ├── MBeanInspector.java       # JMX MBean browsing
-│       │   ├── RequestInspector.java     # HTTP request tracing
+│       │   ├── RequestInspector.java     # HTTP request tracing + error search
 │       │   ├── MetricsInspector.java     # Micrometer metrics
-│       │   ├── EventInspector.java       # Spring Application Events
-│       │   ├── BeanGraphInspector.java   # Dependency graph analysis
-│       │   ├── CompilationInspector.java # JIT + memory pool details
+│       │   ├── TransactionInspector.java # Spring transaction monitoring
+│       │   ├── RestClientInspector.java  # Outbound HTTP call tracking
+│       │   ├── EndpointTestInspector.java # Active API probing + batch testing
 │       │   ├── WatchPoint*.java          # ByteBuddy runtime instrumentation
-│       │   └── ...                       # DataSource, Cache, JPA, Tasks, etc.
+│       │   └── ...                       # DataSource, Cache, JPA, Tasks, Logs, etc.
 │       ├── engine/                  # Reasoning loop
 │       │   └── DebugAgentEngine.java
 │       └── web/                     # Embedded UI + REST
@@ -294,8 +349,9 @@ spring-debug-agent/
 ├── demo/                            # Demo app (Order Management System)
 │   └── ...
 │
-├── e2e-tests/                       # End-to-end test suite (55 tools)
-│   ├── fast-e2e-test.js             # Fast batch test runner
+├── e2e-tests/                       # End-to-end test suite (80 tools)
+│   ├── fast-e2e-test.js             # Fast batch test runner (original 55 tools)
+│   ├── new-tools-test.js            # v0.4.0 new tools test (25 tools)
 │   ├── jvm-spring-tests.js          # JVM/Spring tool tests
 │   ├── infra-web-tests.js           # Infrastructure/Web tool tests
 │   ├── watchpoint-tests.js          # WatchPoint lifecycle tests
@@ -341,26 +397,34 @@ java \
 
 Then open `http://localhost:8080/agent` and try asking:
 
-- "Check the JVM memory and GC stats"
+- "Check the JVM memory, GC stats, and process info"
 - "List all JMX MBean domains and show HikariCP pool attributes"
 - "Show me recent HTTP requests with their status codes and latency"
-- "Inspect the OrderService bean — what are its dependencies?"
+- "Show me all error requests (4xx and 5xx)"
+- "Inspect the OrderService bean — what are its dependencies and annotations?"
 - "Set a watch point on OrderService.getAllOrders"
 - "Show the P95 latency for HTTP requests"
 - "List all Micrometer metrics with 'jvm' prefix"
 - "Check for circular bean dependencies"
 - "Trigger GC and show before/after memory comparison"
+- "What's the current transaction status? Show transaction stats"
+- "Search logs for 'order' and show log statistics"
+- "Test the /api/orders endpoint and batch-test all GET endpoints"
+- "Show me the servlet filter chains and endpoint coverage"
 
 ### E2E Test Suite
 
-All 55 tools are covered by automated E2E tests:
+All 80 tools are covered by automated E2E tests:
 
 ```bash
 # 1. Generate test data (orders, HTTP traffic, logs, cache)
 bash e2e-data-setup.sh
 
-# 2. Run the fast E2E test (6 groups, ~5 min)
+# 2. Run the fast E2E test (original 55 tools, 6 groups, ~5 min)
 node e2e-tests/fast-e2e-test.js
+
+# 3. Run the new tools test (v0.4.0 additions, 25 tools, 5 batches)
+node e2e-tests/new-tools-test.js
 
 # Or run individual test suites:
 node e2e-tests/jvm-spring-tests.js      # 23 JVM/Spring tools
@@ -389,8 +453,8 @@ mvn clean package -DskipTests
 Releases are fully automated via GitHub Actions:
 
 ```bash
-git tag v0.3.0
-git push origin v0.3.0
+git tag v0.4.0
+git push origin v0.4.0
 ```
 
 The CI pipeline will:
