@@ -2,7 +2,7 @@
 
 An AI-powered debugging agent that **embeds directly into your Spring Boot application**. Add one dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
 
-> **141+ diagnostic tools** across **50 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
+> **176+ diagnostic tools** across **53 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
 
 ## Why?
 
@@ -38,7 +38,7 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 <dependency>
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.6.0</version>
+    <version>0.7.0</version>
 </dependency>
 ```
 
@@ -72,7 +72,7 @@ That's it. The agent auto-configures via Spring Boot Starter — no code changes
 ### Gradle
 
 ```groovy
-implementation 'dev.ggcode:spring-debug-agent:0.6.0'
+implementation 'dev.ggcode:spring-debug-agent:0.7.0'
 ```
 
 ## Supported LLM Providers
@@ -484,6 +484,36 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | `get_openapi_spec` | OpenAPI spec overview: paths, schemas, security schemes |
 | `validate_openapi` | Validate spec: missing responses, circular refs, deprecated ops |
 | `get_api_changelog` | API drift: undocumented endpoints vs documented-but-missing |
+
+### TLS / mTLS (`TlsInspector` — 5 tools)  *v0.7.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_tls_keystore_info` | Keystore/truststore config: paths, types, entries, certificates with subject/issuer/expiry |
+| `check_certificate_expiry` | Check all X.509 certificates for expiration — warns if expiring within 30 days |
+| `test_tls_handshake` | Test TLS handshake against a remote HTTPS endpoint — protocol, cipher, cert chain, duration |
+| `get_tls_protocols_and_ciphers` | List supported/enabled TLS protocols and cipher suites on this JVM |
+| `get_ssl_context_info` | Inspect default SSLContext, TrustManager chain, and javax.net.ssl system properties |
+
+### LDAP (`LdapInspector` — 5 tools)  *v0.7.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_ldap_context_source_info` | ContextSource config: URLs, base DN, bind DN, auth strategy, pooling |
+| `test_ldap_bind` | Test LDAP bind authentication — success/failure, response time, error diagnostics |
+| `get_ldap_search_config` | User/group search config: search bases, filters, DN patterns, group role attributes |
+| `search_ldap_directory` | Search LDAP directory for entries — returns DN, attributes, object classes |
+| `get_ldap_connection_pool_stats` | Connection pool statistics and configuration (active, idle, max size, timeout) |
+
+### Kerberos / SPNEGO (`KerberosInspector` — 5 tools)  *v0.7.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_jaas_configuration` | JAAS config: login modules, control flags, options — detect misconfigured Kerberos entries |
+| `inspect_keytab` | Inspect keytab file: principals, encryption types, file integrity |
+| `test_kerberos_login` | Test Kerberos login — attempt TGT acquisition, report credentials and detailed errors |
+| `get_kerberos_security_config` | Spring Security Kerberos/SPNEGO beans: ticket validator, auth provider, SPNEGO filter |
+| `get_kerberos_environment` | Kerberos environment: krb5.conf, realm/KDC settings, system properties, ticket cache |
 
 ### Classloading & System (3 tools)
 

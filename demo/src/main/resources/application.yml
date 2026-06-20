@@ -1,4 +1,6 @@
 spring:
+  main:
+    allow-bean-definition-overriding: true
   application:
     name: order-management-demo
 
@@ -103,6 +105,16 @@ resilience4j:
 
 server:
   port: 8080
+  # TLS / mTLS demo config (for TlsInspector — present but not switching HTTP to HTTPS)
+  ssl:
+    enabled: false
+    key-store: classpath:demo-keystore.p12
+    key-store-password: demopass
+    key-store-type: PKCS12
+    key-alias: demo-server
+    enabled-protocols: TLSv1.2,TLSv1.3
+    ciphers: TLS_AES_256_GCM_SHA384,TLS_AES_128_GCM_SHA256
+    client-auth: want
 
 # Debug Agent Configuration
 debug-agent:
@@ -119,7 +131,7 @@ debug-agent:
     model: ${LLM_MODEL:gpt-4o}
     temperature: 0.3
     max-tokens: 4096
-    max-tool-rounds: 10
+    max-tool-rounds: 25
     timeout-seconds: 120
 
 management:

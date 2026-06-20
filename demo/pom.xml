@@ -35,7 +35,7 @@
         <dependency>
             <groupId>dev.ggcode</groupId>
             <artifactId>spring-debug-agent</artifactId>
-            <version>0.6.1-SNAPSHOT</version>
+            <version>0.7.0</version>
         </dependency>
 
         <!-- Spring Boot Starters -->
@@ -225,6 +225,31 @@
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-test</artifactId>
             <scope>test</scope>
+        </dependency>
+
+        <!-- Spring Security LDAP — for LdapInspector demo -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-ldap</artifactId>
+        </dependency>
+
+        <!-- UnboundID LDAP SDK — embedded LDAP server for demo -->
+        <dependency>
+            <groupId>com.unboundid</groupId>
+            <artifactId>unboundid-ldapsdk</artifactId>
+            <version>7.0.1</version>
+        </dependency>
+
+        <!-- Spring Security Kerberos — for KerberosInspector demo -->
+        <dependency>
+            <groupId>org.springframework.security.kerberos</groupId>
+            <artifactId>spring-security-kerberos-web</artifactId>
+            <version>2.1.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.springframework.security.kerberos</groupId>
+            <artifactId>spring-security-kerberos-client</artifactId>
+            <version>2.1.1</version>
         </dependency>
     </dependencies>
 

@@ -345,6 +345,27 @@ public class DebugAgentAutoConfiguration {
         return new GraphQLInspector();
     }
 
+    // ================================================================
+    //  Enterprise Security inspectors (v0.6.2)
+    // ================================================================
+
+    @Bean
+    public TlsInspector tlsInspector() {
+        return new TlsInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.ldap.core.ContextSource")
+    public LdapInspector ldapInspector() {
+        return new LdapInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.security.kerberos.authentication.KerberosServiceAuthenticationProvider")
+    public KerberosInspector kerberosInspector() {
+        return new KerberosInspector();
+    }
+
     @Bean
     public OpenApiInspector openApiInspector() {
         return new OpenApiInspector();
@@ -433,6 +454,10 @@ public class DebugAgentAutoConfiguration {
         addIfExists(ctx, StateMachineInspector.class, inspectors);
         addIfExists(ctx, GraphQLInspector.class, inspectors);
         addIfExists(ctx, OpenApiInspector.class, inspectors);
+        // v0.6.2 Enterprise Security
+        addIfExists(ctx, TlsInspector.class, inspectors);
+        addIfExists(ctx, LdapInspector.class, inspectors);
+        addIfExists(ctx, KerberosInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {
