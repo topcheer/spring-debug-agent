@@ -31,6 +31,16 @@ public interface ChatCallback {
     void onError(String message);
 
     /**
+     * Context was compressed to fit within the token limit.
+     * Called before the next LLM round so the user is aware.
+     *
+     * @param originalTokens  token count before compression
+     * @param compressedTokens token count after compression
+     * @param removedRounds   number of conversation rounds removed
+     */
+    default void onContextCompressed(int originalTokens, int compressedTokens, int removedRounds) {}
+
+    /**
      * A no-op implementation for synchronous calls.
      */
     ChatCallback NO_OP = new ChatCallback() {

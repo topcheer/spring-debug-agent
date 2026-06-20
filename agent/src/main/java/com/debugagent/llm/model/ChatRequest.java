@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import com.fasterxml.jackson.annotation.JsonProperty;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * Request body for POST /v1/chat/completions.
@@ -18,6 +19,16 @@ public class ChatRequest {
     private double temperature;
     private int maxTokens;
     private boolean stream;
+
+    /**
+     * Stream options — enables usage reporting in streaming mode.
+     * Set to {"include_usage": true} to receive token counts.
+     */
+    private Map<String, Object> streamOptions;
+
+    @JsonProperty("stream_options")
+    public Map<String, Object> getStreamOptions() { return streamOptions; }
+    public void setStreamOptions(Map<String, Object> streamOptions) { this.streamOptions = streamOptions; }
 
     @JsonProperty("max_tokens")
     public int getMaxTokens() { return maxTokens; }

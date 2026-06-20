@@ -19,7 +19,7 @@ build/
 Thumbs.db
 
 # Node (demo recording tooling)
-node_modules/
+scripts/node_modules/
 
 # Gradle legacy
 .gradle/

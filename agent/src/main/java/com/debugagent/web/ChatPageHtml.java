@@ -224,6 +224,11 @@ public class ChatPageHtml {
     background: rgba(248, 81, 73, 0.1); border: 1px solid var(--red);
     border-radius: 6px; font-size: 13px; color: var(--red);
   }
+  .system-notice {
+    max-width: var(--max-width); margin: 0 auto; padding: 8px 12px;
+    background: rgba(210, 153, 34, 0.08); border: 1px solid var(--orange);
+    border-radius: 6px; font-size: 12px; color: var(--orange); text-align: center;
+  }
 </style>
 </head>
 <body>
@@ -570,6 +575,14 @@ function addError(message) {
   autoScroll();
 }
 
+function addSystemNotice(message) {
+  const div = document.createElement('div');
+  div.className = 'system-notice';
+  div.innerHTML = message;
+  chatMessages.appendChild(div);
+  autoScroll();
+}
+
 /* ================================================================
    SSE streaming
    ================================================================ */
@@ -637,6 +650,13 @@ async function sendMessage() {
             completeToolBadge(badgeMap[name], name, true);
           } else if (currentEvent === 'done') {
             streamDone = true;
+          } else if (currentEvent === 'context_compressed') {
+            try {
+              const info = JSON.parse(currentData);
+              addSystemNotice('⚠ Context auto-compressed: ' + info.originalTokens + ' → ~' + info.compressedTokens + ' tokens (' + info.removedRounds + ' old rounds removed)');
+            } catch(e) {
+              addSystemNotice('⚠ Context auto-compressed');
+            }
           } else if (currentEvent === 'error') {
             addError(currentData);
           }

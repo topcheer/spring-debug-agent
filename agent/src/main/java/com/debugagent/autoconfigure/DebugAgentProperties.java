@@ -60,7 +60,7 @@ public class DebugAgentProperties {
         /**
          * Maximum number of tool-calling rounds before giving up.
          */
-        private int maxToolRounds = 10;
+        private int maxToolRounds = 25;
 
         /**
          * Request timeout in seconds.
@@ -81,6 +81,14 @@ public class DebugAgentProperties {
          * Maximum delay cap in ms for retries. Default 30000ms.
          */
         private long retryMaxDelayMs = 30000;
+
+        /**
+         * Context window token limit for auto-compression.
+         * When the conversation exceeds this many tokens, older messages
+         * are automatically summarized/truncated. Default 100000 (100K).
+         * Set to 0 to disable auto-compression.
+         */
+        private int contextWindowTokens = 100000;
 
         public String getBaseUrl() { return baseUrl; }
         public void setBaseUrl(String baseUrl) { this.baseUrl = baseUrl; }
@@ -111,5 +119,8 @@ public class DebugAgentProperties {
 
         public long getRetryMaxDelayMs() { return retryMaxDelayMs; }
         public void setRetryMaxDelayMs(long retryMaxDelayMs) { this.retryMaxDelayMs = retryMaxDelayMs; }
+
+        public int getContextWindowTokens() { return contextWindowTokens; }
+        public void setContextWindowTokens(int contextWindowTokens) { this.contextWindowTokens = contextWindowTokens; }
     }
 }

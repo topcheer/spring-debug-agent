@@ -52,6 +52,33 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
 
+  # Cloud Discovery (SimpleDiscoveryClient for demo)
+  cloud:
+    compatibility-verifier:
+      enabled: false
+    discovery:
+      simple:
+        instances:
+          order-service:
+            - uri: http://localhost:8080
+              metadata:
+                zone: zone1
+                prefer-ip: true
+          pricing-service:
+            - uri: http://localhost:8081
+              metadata:
+                zone: zone1
+
+  # Vault
+  vault:
+    uri: http://localhost:8200
+    token: myroot
+    scheme: http
+    kv:
+      enabled: true
+      backend: secret
+      default-context: order-db
+
 # Resilience4j
 resilience4j:
   circuitbreaker:
@@ -96,12 +123,24 @@ debug-agent:
     timeout-seconds: 120
 
 management:
+  tracing:
+    sampling:
+      probability: 1.0
+  zipkin:
+    tracing:
+      endpoint: http://localhost:9411/api/v2/spans
   endpoints:
     web:
       exposure:
-        include: health,info,metrics,env,beans
+        include: health,info,metrics,env,beans,prometheus
 
 logging:
   level:
     com.debugagent: INFO
     com.demo: DEBUG
+
+# MinIO
+minio:
+  endpoint: http://localhost:9000
+  access-key: minioadmin
+  secret-key: minioadmin

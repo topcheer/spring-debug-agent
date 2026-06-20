@@ -90,12 +90,11 @@ public class AgentController {
                     @Override
                     public void onToolResult(String toolName, String result) {
                         try {
-                            String preview = result.length() > 200
-                                    ? result.substring(0, 200) + "..."
-                                    : result;
+                            // Send full result — SSE can handle large payloads
+                            // (LLM needs complete data to provide accurate analysis)
                             emitter.send(SseEmitter.event()
                                     .name("tool_result")
-                                    .data(toolName + ": " + preview));
+                                    .data(toolName + ": " + result));
                         } catch (Exception e) {
                             log.debug("SSE send error", e);
                         }
@@ -111,6 +110,20 @@ public class AgentController {
                         } catch (Exception e) {
                             log.debug("SSE complete error", e);
                             emitter.complete();
+                        }
+                    }
+
+                    @Override
+                    public void onContextCompressed(int originalTokens, int compressedTokens, int removedRounds) {
+                        try {
+                            String msg = String.format(
+                                    "{\"originalTokens\":%d,\"compressedTokens\":%d,\"removedRounds\":%d}",
+                                    originalTokens, compressedTokens, removedRounds);
+                            emitter.send(SseEmitter.event()
+                                    .name("context_compressed")
+                                    .data(msg));
+                        } catch (Exception e) {
+                            log.debug("SSE send error", e);
                         }
                     }
 

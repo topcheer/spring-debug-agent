@@ -50,7 +50,7 @@ public class OpenAiClient {
      */
     public interface StreamHandler {
         void onContent(String content);
-        void onComplete(List<ToolCall> accumulatedToolCalls, String finishReason);
+        void onComplete(List<ToolCall> accumulatedToolCalls, String finishReason, TokenUsage usage);
         void onError(Throwable error);
     }
 
@@ -255,6 +255,7 @@ public class OpenAiClient {
         StringBuilder contentBuilder = new StringBuilder();
         Map<Integer, ToolCall> toolCallMap = new TreeMap<>();
         String[] finishReason = {null};
+        TokenUsage[] usage = {null};
 
         try (BufferedReader reader = new BufferedReader(
                 new InputStreamReader(input, StandardCharsets.UTF_8))) {
@@ -309,12 +310,19 @@ public class OpenAiClient {
 
                 String fr = choice.path("finish_reason").asText(null);
                 if (fr != null) finishReason[0] = fr;
+
+                // Parse usage from the final chunk (when stream_options.include_usage is true)
+                JsonNode usageNode = root.path("usage");
+                if (!usageNode.isMissingNode() && usageNode.has("prompt_tokens")) {
+                    usage[0] = objectMapper.treeToValue(usageNode, TokenUsage.class);
+                    log.debug("Received token usage: {}", usage[0]);
+                }
             }
         }
 
         List<ToolCall> toolCalls = new ArrayList<>(toolCallMap.values());
         toolCalls.removeIf(tc -> tc.getFunction() == null || tc.getFunction().getName() == null);
-        handler.onComplete(toolCalls, finishReason[0]);
+        handler.onComplete(toolCalls, finishReason[0], usage[0]);
     }
 
     // ==================== Retry Helpers ====================

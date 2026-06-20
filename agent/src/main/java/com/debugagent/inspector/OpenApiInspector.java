@@ -26,9 +26,16 @@ public class OpenApiInspector implements ApplicationContextAware {
     public Map<String, Object> getOpenapiSpec() {
         Map<String, Object> result = new LinkedHashMap<>();
 
+        // Try HTTP endpoint first (most reliable for springdoc 2.x)
+        Map<String, Object> httpResult = fetchOpenApiViaHttp();
+        if (httpResult != null) {
+            return httpResult;
+        }
+
+        // Fall back to bean-based extraction
         Object openApi = findOpenApi();
         if (openApi == null) {
-            result.put("error", "No OpenAPI bean found. Add springdoc-openapi-starter-webmvc-ui or swagger-core.");
+            result.put("error", "No OpenAPI bean found and /v3/api-docs endpoint unavailable. Add springdoc-openapi-starter-webmvc-ui or swagger-core.");
             return result;
         }
 
@@ -271,27 +278,23 @@ public class OpenApiInspector implements ApplicationContextAware {
     // ---------------------------------------------------------------
 
     private Object findOpenApi() {
-        // 1. io.swagger.v3.oas.models.OpenAPI bean (springdoc or swagger)
-        try {
-            Class<?> openApiClass = Class.forName("io.swagger.v3.oas.models.OpenAPI");
-            String[] names = ctx.getBeanNamesForType(openApiClass);
-            if (names.length > 0) return ctx.getBean(names[0]);
-        } catch (ClassNotFoundException ignored) {
-        } catch (Exception ignored) {}
-
-        // 2. SpringDoc OpenApiResource — call getOpenApi()
+        // 1. SpringDoc OpenApiResource — call getOpenApi() (generates full spec with paths)
         try {
             Class<?> resourceClass = Class.forName("org.springdoc.api.OpenApiResource");
             String[] names = ctx.getBeanNamesForType(resourceClass);
             if (names.length > 0) {
                 Object resource = ctx.getBean(names[0]);
                 Object openApi = ReflectionHelper.invokeMethod(resource, "getOpenApi");
-                if (openApi != null) return openApi;
+                if (openApi != null) {
+                    // Verify it has paths
+                    Object paths = ReflectionHelper.invokeMethod(openApi, "getPaths");
+                    if (paths != null) return openApi;
+                }
             }
         } catch (ClassNotFoundException ignored) {
         } catch (Exception ignored) {}
 
-        // 3. OpenAPIService bean
+        // 2. OpenAPIService bean
         try {
             Class<?> serviceClass = Class.forName("org.springdoc.core.service.OpenAPIService");
             String[] names = ctx.getBeanNamesForType(serviceClass);
@@ -303,7 +306,85 @@ public class OpenApiInspector implements ApplicationContextAware {
         } catch (ClassNotFoundException ignored) {
         } catch (Exception ignored) {}
 
+        // 3. Static io.swagger.v3.oas.models.OpenAPI bean (may have limited paths)
+        try {
+            Class<?> openApiClass = Class.forName("io.swagger.v3.oas.models.OpenAPI");
+            String[] names = ctx.getBeanNamesForType(openApiClass);
+            if (names.length > 0) return ctx.getBean(names[0]);
+        } catch (ClassNotFoundException ignored) {
+        } catch (Exception ignored) {}
+
         return null;
+    }
+
+    /**
+     * Fetch OpenAPI spec from /v3/api-docs HTTP endpoint (springdoc 2.x).
+     */
+    @SuppressWarnings("unchecked")
+    private Map<String, Object> fetchOpenApiViaHttp() {
+        try {
+            var client = java.net.http.HttpClient.newHttpClient();
+            var port = ctx.getEnvironment().getProperty("server.port");
+            if (port == null || port.equals("0")) port = "8080";
+            var request = java.net.http.HttpRequest.newBuilder()
+                    .uri(java.net.URI.create("http://localhost:" + port + "/v3/api-docs"))
+                    .timeout(java.time.Duration.ofSeconds(5))
+                    .GET()
+                    .build();
+            var response = client.send(request, java.net.http.HttpResponse.BodyHandlers.ofString());
+            if (response.statusCode() != 200) return null;
+
+            var mapper = new com.fasterxml.jackson.databind.ObjectMapper();
+            var root = mapper.readValue(response.body(), Map.class);
+
+            Map<String, Object> result = new LinkedHashMap<>();
+            result.put("source", "/v3/api-docs (HTTP)");
+
+            Object info = root.get("info");
+            if (info instanceof Map<?, ?> i) {
+                Map<String, Object> infoMap = new LinkedHashMap<>();
+                infoMap.put("title", i.get("title"));
+                infoMap.put("version", i.get("version"));
+                infoMap.put("description", i.get("description"));
+                result.put("info", infoMap);
+            }
+
+            Object paths = root.get("paths");
+            int pathCount = 0, opCount = 0;
+            List<String> pathKeys = new ArrayList<>();
+            if (paths instanceof Map<?, ?> pm) {
+                pathCount = pm.size();
+                for (Object key : pm.keySet()) {
+                    pathKeys.add(String.valueOf(key));
+                    Object item = pm.get(key);
+                    if (item instanceof Map<?, ?> methods) {
+                        for (String m : List.of("get", "post", "put", "delete", "patch", "options", "head")) {
+                            if (methods.containsKey(m)) opCount++;
+                        }
+                    }
+                }
+            }
+            result.put("pathCount", pathCount);
+            result.put("operationCount", opCount);
+            result.put("paths", pathKeys.size() > 100 ? pathKeys.subList(0, 100) : pathKeys);
+
+            Object components = root.get("components");
+            if (components instanceof Map<?, ?> comp) {
+                Object schemas = comp.get("schemas");
+                if (schemas instanceof Map<?, ?> sm) {
+                    List<String> schemaNames = new ArrayList<>();
+                    for (Object k : sm.keySet()) schemaNames.add(String.valueOf(k));
+                    result.put("schemaCount", schemaNames.size());
+                    result.put("schemas", schemaNames);
+                }
+            }
+
+            return result;
+        } catch (Exception e) {
+            System.getLogger("OpenApiInspector").log(System.Logger.Level.WARNING,
+                    "fetchOpenApiViaHttp failed: " + e.getMessage());
+            return null;
+        }
     }
 
     /**

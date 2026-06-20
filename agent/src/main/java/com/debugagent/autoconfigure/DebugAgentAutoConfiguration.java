@@ -289,7 +289,7 @@ public class DebugAgentAutoConfiguration {
     }
 
     @Bean
-    @ConditionalOnClass(name = "org.springframework.security.oauth2.server.authorization.AuthorizationServerSettings")
+    @ConditionalOnClass(name = "org.springframework.security.oauth2.server.authorization.settings.AuthorizationServerSettings")
     public OAuth2Inspector oAuth2Inspector() {
         return new OAuth2Inspector();
     }

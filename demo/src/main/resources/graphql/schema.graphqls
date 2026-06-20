@@ -1,0 +1,15 @@
+type Query {
+    orderById(id: ID!): Order
+    allOrders: [Order!]!
+}
+
+type Mutation {
+    createOrder(customer: String!, amount: Float!): Order!
+}
+
+type Order {
+    id: ID!
+    customer: String!
+    amount: Float!
+    status: String!
+}

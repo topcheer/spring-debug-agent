@@ -19,6 +19,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * 2. If LLM returns tool calls → execute them → feed results back → repeat
  * 3. If LLM returns content → stream to caller → done
  *
+ * Features:
+ * - Dynamic system prompt generated from registered tools
+ * - Real token usage tracking from LLM API responses
+ * - Automatic context compression when token count exceeds threshold
+ *
  * All responses are streamed via {@link ChatCallback} for real-time UX.
  */
 public class DebugAgentEngine {
@@ -32,56 +37,14 @@ public class DebugAgentEngine {
 
     private final Map<String, ChatSession> sessions = new ConcurrentHashMap<>();
 
-    private static final String SYSTEM_PROMPT = """
-            You are an expert JVM and Spring Boot debugging assistant.
-            You are running INSIDE the developer's Spring Boot application and have direct access
-            to its runtime state through diagnostic tools.
+    /** Builds system prompt dynamically from registered tools. */
+    private final SystemPromptBuilder promptBuilder;
 
-            ## Your Capabilities
-            You can call tools to inspect the live application:
+    /** Compresses context when token count exceeds the limit. */
+    private final ContextCompressor contextCompressor;
 
-            **JVM Tools:**
-            - get_thread_summary: Overview of thread states and counts
-            - get_thread_dump: Full thread dump with optional stack traces
-            - detect_deadlocks: Check for deadlocked threads
-            - get_cpu_consuming_threads: Find CPU-intensive threads
-            - get_memory_summary: Heap/non-heap memory, memory pools (Eden, Old, Metaspace)
-            - get_gc_stats: GC collection count and time
-            - get_runtime_info: Java version, uptime, JVM args, loaded classes
-
-            **Spring Tools:**
-            - get_all_beans: List all Spring beans with type and scope
-            - get_bean_details: Inspect a bean's fields and current values
-            - get_bean_dependencies: Check bean dependency relationships
-            - get_property: Get a specific config property value
-            - search_properties: Search properties by keyword
-            - get_active_profiles: Active Spring profiles
-            - get_context_info: ApplicationContext info
-
-            **WatchPoint Tools (Virtual Breakpoints):**
-            - search_loaded_classes: Find loaded classes by name pattern (DO THIS FIRST to get exact class name)
-            - add_watch_point: Monitor a method — captures args, return value, timing on each call
-            - get_watch_results: Read captured invocations from a watch point
-            - list_watch_points: List all active watch points
-            - remove_watch_point: Deactivate a watch point
-            - get_bean_field_value: Read a specific field's current value on a bean
-
-            ## Workflow
-            1. Understand the developer's problem description
-            2. Proactively call tools to gather diagnostic data — DO NOT just ask questions
-            3. Analyze the collected data to identify root causes
-            4. Provide clear, actionable solutions
-
-            ## Guidelines
-            - Be proactive: gather data with tools before answering
-            - For a slow method: search_loaded_classes → add_watch_point → ask user to trigger → get_watch_results
-            - For memory issues: get_memory_summary → get_gc_stats → analyze
-            - For thread issues: get_thread_summary → get_thread_dump or detect_deadlocks
-            - For DI issues: get_all_beans → get_bean_details → get_bean_dependencies
-            - Always present data in a readable format
-            - Respond in the same language the developer uses (Chinese/English/etc.)
-            - When you find a problem, explain the root cause and give concrete fix suggestions
-            """;
+    /** Cached system prompt (rebuilt only when tool set changes, which is never at runtime). */
+    private final String systemPrompt;
 
     public DebugAgentEngine(OpenAiClient llmClient,
                             ToolRegistry toolRegistry,
@@ -91,6 +54,13 @@ public class DebugAgentEngine {
         this.toolRegistry = toolRegistry;
         this.toolExecutor = toolExecutor;
         this.properties = properties;
+        this.promptBuilder = new SystemPromptBuilder(toolRegistry);
+        this.systemPrompt = promptBuilder.build();
+        this.contextCompressor = new ContextCompressor(
+                llmClient, properties.getLlm().getModel(), properties.getLlm().getTemperature(),
+                properties.getLlm().getContextWindowTokens(), 3);
+        log.info("DebugAgentEngine initialized: {} tools, context window {} tokens",
+                toolRegistry.toolCount(), properties.getLlm().getContextWindowTokens());
     }
 
     /**
@@ -134,39 +104,62 @@ public class DebugAgentEngine {
         for (int round = 0; round < maxRounds; round++) {
             log.info("Tool-calling round {} for session {}", round + 1, session.getSessionId());
 
-            // Build the request
+            // ── Check if context compression is needed ──
+            if (round > 0 && contextCompressor.needsCompression(session.getCurrentContextTokens())) {
+                log.info("Context compression triggered: {} tokens > {} limit",
+                        session.getCurrentContextTokens(), llmConfig.getContextWindowTokens());
+
+                ContextCompressor.CompressionResult result = contextCompressor.compress(session);
+                if (result != null) {
+                    // Notify the user that compression happened
+                    callback.onContent("\n\n> [Context auto-compressed: " +
+                            result.originalTokens + " → ~" + result.compressedTokens + " tokens" +
+                            " (" + result.strategy + ")]\n\n");
+                    callback.onContextCompressed(
+                            result.originalTokens, result.compressedTokens, result.removedRounds);
+
+                    log.info("Context compressed: {} → ~{} tokens ({})",
+                            result.originalTokens, result.compressedTokens, result.strategy);
+                }
+            }
+
+            // ── Build the request ──
             ChatRequest request = new ChatRequest();
             request.setModel(llmConfig.getModel());
             request.setTemperature(llmConfig.getTemperature());
             request.setMaxTokens(llmConfig.getMaxTokens());
             request.setToolChoice("auto");
+            request.setStreamOptions(Map.of("include_usage", true));
 
-            // Messages: system prompt + conversation history
+            // Messages: dynamic system prompt + conversation history
             List<ChatMessage> messages = new ArrayList<>();
-            messages.add(ChatMessage.system(SYSTEM_PROMPT));
+            messages.add(ChatMessage.system(systemPrompt));
             messages.addAll(session.getMessages());
             request.setMessages(messages);
 
             // Tools
             request.setTools(toolRegistry.getAllToolDefinitions());
 
-            // Stream the response and capture state
+            // ── Stream the response ──
             StringBuilder contentBuilder = new StringBuilder();
             @SuppressWarnings("unchecked")
             List<ToolCall>[] toolCallHolder = new List[]{Collections.emptyList()};
             boolean[] hadError = {false};
+            TokenUsage[] usageHolder = {null};
 
             llmClient.chatCompletionStreamRaw(request, new OpenAiClient.StreamHandler() {
                 @Override
                 public void onContent(String content) {
+                    contentBuilder.append(content);
                     callback.onContent(content);
                 }
 
                 @Override
-                public void onComplete(List<ToolCall> toolCalls, String finishReason) {
+                public void onComplete(List<ToolCall> toolCalls, String finishReason, TokenUsage usage) {
                     toolCallHolder[0] = toolCalls;
-                    log.info("Stream complete. Content: {} chars, Tool calls: {}",
-                            contentBuilder.length(), toolCalls.size());
+                    usageHolder[0] = usage;
+                    log.info("Stream complete. Content: {} chars, Tool calls: {}, Usage: {}",
+                            contentBuilder.length(), toolCalls.size(), usage);
                 }
 
                 @Override
@@ -179,6 +172,13 @@ public class DebugAgentEngine {
 
             if (hadError[0]) {
                 return; // Error already reported via callback
+            }
+
+            // ── Record token usage for compression decisions ──
+            if (usageHolder[0] != null) {
+                session.recordTokenUsage(usageHolder[0]);
+                log.debug("Session {} token usage: {} (cumulative prompt: {})",
+                        session.getSessionId(), usageHolder[0], session.getCurrentContextTokens());
             }
 
             List<ToolCall> toolCalls = toolCallHolder[0];
@@ -216,8 +216,55 @@ public class DebugAgentEngine {
             // Loop continues → LLM will analyze tool results in the next round
         }
 
-        // Exceeded max rounds
-        callback.onError("Exceeded maximum tool-calling rounds (" + maxRounds
-                + "). The issue may be too complex for autonomous resolution.");
+        // Reached max rounds — force a final summary instead of erroring out.
+        // Send one more request with tool_choice="none" so the LLM MUST produce
+        // a text answer based on everything it has gathered so far.
+        log.info("Reached max rounds ({}) for session {}, forcing final summary",
+                maxRounds, session.getSessionId());
+
+        ChatRequest finalRequest = new ChatRequest();
+        finalRequest.setModel(llmConfig.getModel());
+        finalRequest.setTemperature(llmConfig.getTemperature());
+        finalRequest.setMaxTokens(llmConfig.getMaxTokens());
+        finalRequest.setToolChoice("none");
+        finalRequest.setStreamOptions(Map.of("include_usage", true));
+
+        List<ChatMessage> finalMessages = new ArrayList<>();
+        finalMessages.add(ChatMessage.system(systemPrompt));
+        finalMessages.addAll(session.getMessages());
+        // Add a nudge for the LLM to summarize
+        finalMessages.add(ChatMessage.system(
+                "You have reached the maximum number of tool-calling rounds. "
+                + "Based on all the diagnostic data you have gathered so far, "
+                + "provide a comprehensive analysis and actionable recommendations NOW. "
+                + "Do not attempt to call more tools."));
+        finalRequest.setMessages(finalMessages);
+        // No tools — forces text-only response
+        finalRequest.setTools(Collections.emptyList());
+
+        llmClient.chatCompletionStreamRaw(finalRequest, new OpenAiClient.StreamHandler() {
+            @Override
+            public void onContent(String content) {
+                callback.onContent(content);
+            }
+
+            @Override
+            public void onComplete(List<ToolCall> toolCalls, String finishReason, TokenUsage usage) {
+                if (usage != null) {
+                    session.recordTokenUsage(usage);
+                }
+                callback.onComplete();
+            }
+
+            @Override
+            public void onError(Throwable error) {
+                // If even the summary fails, at least give a graceful message
+                log.error("Final summary also failed", error);
+                callback.onContent("\n\n*I've gathered diagnostic data from multiple tools "
+                        + "but reached the analysis limit. Please ask a more specific question "
+                        + "about a particular component for deeper analysis.*");
+                callback.onComplete();
+            }
+        });
     }
 }
