@@ -4,19 +4,19 @@
 
 ## 标题
 
-Spring Debug Agent — AI-Powered In-Process Diagnostics for Spring Boot (64 Inspectors / 226 Tools)
+Spring Debug Agent — AI-Powered In-Process Diagnostics for Spring Boot (66 Inspectors / 246 Tools)
 
 ---
 
 ## 简短描述
 
-Add one dependency. Get an AI debugging assistant that lives INSIDE your Spring Boot app. It can inspect JVM memory, thread dumps, database pools, Redis, Kafka, MongoDB, Elasticsearch, GraphQL, OAuth2, Vault, Kerberos, RocketMQ, Nacos, Seata, Cassandra, Camel — and 200+ more tools — all through natural language chat.
+Add one dependency. Get an AI debugging assistant that lives INSIDE your Spring Boot app. It can inspect JVM memory, thread dumps, database pools, Redis, Kafka, MongoDB, Elasticsearch, GraphQL, OAuth2, Vault, Kerberos, RocketMQ, Nacos, Seata, Cassandra, Camel, Spring AOP, OpenFeign — and 240+ more tools — all through natural language chat.
 
 ---
 
 ## 完整描述
 
-Spring Debug Agent is an open-source debugging companion for Spring Boot 3.x / Java 17+ apps. Add one Maven dependency, and it registers 64 diagnostic inspectors with 226 tools that an embedded LLM can call autonomously.
+Spring Debug Agent is an open-source debugging companion for Spring Boot 3.x / Java 17+ apps. Add one Maven dependency, and it registers 66 diagnostic inspectors with 246 tools that an embedded LLM can call autonomously.
 
 No external agents. No sidecar processes. No code changes. Just chat with your app at /agent and ask questions in plain English.
 
@@ -48,16 +48,17 @@ TIMESTAMPS
 54:00 15 Seata + Tracing + Camel + State Machine — distributed TX config, spans, Camel routes, state machine transitions
 57:00 16 Vault + Object Storage + Distributed Cache — secret engines, MinIO/S3 buckets, Hazelcast cluster members
 58:30 17 Metrics + Events + Health — Micrometer meters, event listeners, actuator health, cache hit/miss ratios
-59:30 18 Logs + Environment + Classloading + WatchPoints — log stats, property sources, loaded classes, ByteBuddy watch points
+59:00 18 AOP + OpenFeign + System Control — @Aspect beans, advice types, proxy beans, Feign clients, thread dump, heap dump
+1:02:00 19 Logs + Environment + Classloading + WatchPoints — log stats, property sources, @ConfigurationProperties, loaded classes, ByteBuddy watch points
 
 KEY FEATURES
 
-- Dynamic system prompt: all 226 tools described to the LLM automatically
+- Dynamic system prompt: all 246 tools described to the LLM automatically
 - Real token tracking via stream_options.include_usage
 - Auto context compression: LLM summarizes old tool results when exceeding 100K tokens (not hard truncation)
 - Graceful degradation: forces final summary at max rounds instead of erroring
 - Conditional registration: only inspectors whose deps are on classpath get loaded
-- 64 inspectors covering JVM, Spring, databases, messaging, NoSQL, security, distributed systems, and more
+- 66 inspectors covering JVM, Spring, databases, messaging, NoSQL, security, distributed systems, AOP, OpenFeign, and more
 - 13 Docker-backed external services for full-stack debugging demos
 
 QUICK START
@@ -74,6 +75,6 @@ Start app, open localhost:8080/agent, start chatting.
 LINKS
 
 GitHub: github.com/topcheer/spring-debug-agent
-Maven Central: dev.ggcode : spring-debug-agent : 0.8.0
+Maven Central: dev.ggcode : spring-debug-agent : 0.8.1
 
-#SpringBoot #Java #Debugging #AI #LLM #SpringFramework #DevOps #JVM #OpenSource #DeveloperTools #Diagnostics #ApplicationMonitoring #Kerberos #Microservices #ApacheCamel #RocketMQ #Nacos #Seata #Cassandra
+#SpringBoot #Java #Debugging #AI #LLM #SpringFramework #DevOps #JVM #OpenSource #DeveloperTools #Diagnostics #ApplicationMonitoring #Kerberos #Microservices #ApacheCamel #RocketMQ #Nacos #Seata #Cassandra #SpringAOP #OpenFeign

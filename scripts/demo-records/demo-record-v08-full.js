@@ -3,12 +3,12 @@ const fs = require('fs');
 const { execSync } = require('child_process');
 
 /**
- * v0.8.0 Full demo recording — 226 tools / 64 inspectors.
+ * v0.8.1 Full demo recording — 246 tools / 66 inspectors.
  *
  * 18 sections using NATURAL LANGUAGE prompts (no explicit tool names).
  * The LLM must autonomously decide which tools to invoke — just like a real developer would ask.
  *
- * Coverage: ALL 64 inspectors, ALL 226 tools.
+ * Coverage: ALL 66 inspectors, ALL 246 tools.
  *
  * Usage:
  *   1. Start Docker:  docker compose up -d

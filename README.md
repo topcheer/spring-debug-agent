@@ -38,7 +38,7 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 <dependency>
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.8.0</version>
+    <version>0.8.1</version>
 </dependency>
 ```
 
@@ -72,7 +72,7 @@ That's it. The agent auto-configures via Spring Boot Starter — no code changes
 ### Gradle
 
 ```groovy
-implementation 'dev.ggcode:spring-debug-agent:0.8.0'
+implementation 'dev.ggcode:spring-debug-agent:0.8.1'
 ```
 
 ## Supported LLM Providers
