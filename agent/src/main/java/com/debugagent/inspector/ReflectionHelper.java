@@ -40,7 +40,7 @@ public final class ReflectionHelper {
     @SuppressWarnings("unchecked")
     public static <T> List<T> getBeansOfType(ApplicationContext ctx, String className) {
         try {
-            Class<?> clazz = Class.forName(className);
+            Class<?> clazz = Class.forName(className, false, ctx.getClassLoader());
             Map<String, ?> beans = ctx.getBeansOfType((Class<Object>) clazz);
             return new ArrayList<>((Collection<T>) beans.values());
         } catch (Exception e) {
@@ -168,10 +168,18 @@ public final class ReflectionHelper {
      * Check if a class is available on the classpath.
      */
     public static boolean isClassAvailable(String className) {
+        return isClassAvailable(className, null);
+    }
+
+    /**
+     * Check if a class is available on the classpath (using the given context's ClassLoader if provided).
+     */
+    public static boolean isClassAvailable(String className, ApplicationContext ctx) {
         try {
-            Class.forName(className);
+            ClassLoader cl = ctx != null ? ctx.getClassLoader() : Thread.currentThread().getContextClassLoader();
+            Class.forName(className, false, cl);
             return true;
-        } catch (ClassNotFoundException e) {
+        } catch (Throwable e) {
             return false;
         }
     }

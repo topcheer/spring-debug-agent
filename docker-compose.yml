@@ -1,0 +1,133 @@
+services:
+
+  # ================================================================
+  # Core Infrastructure (previously standalone containers)
+  # ================================================================
+
+  redis:
+    image: redis:7-alpine
+    container_name: demo-redis
+    ports:
+      - "6379:6379"
+    command: ["redis-server", "--save", "60", "1", "--loglevel", "warning"]
+
+  mongodb:
+    image: mongo:7
+    container_name: demo-mongo
+    ports:
+      - "27017:27017"
+
+  elasticsearch:
+    image: docker.elastic.co/elasticsearch/elasticsearch:8.15.0
+    container_name: demo-elasticsearch
+    ports:
+      - "9200:9200"
+      - "9300:9300"
+    environment:
+      discovery.type: single-node
+      xpack.security.enabled: "false"
+      ES_JAVA_OPTS: "-Xms256m -Xmx256m"
+
+  redpanda:
+    image: redpandadata/redpanda:latest
+    container_name: demo-redpanda
+    ports:
+      - "9092:9092"
+      - "9644:9644"
+    command: ["redpanda", "start", "--overprovisioned"]
+
+  vault:
+    image: hashicorp/vault:latest
+    container_name: demo-vault
+    ports:
+      - "8200:8200"
+    environment:
+      VAULT_DEV_LISTEN_ADDRESS: 0.0.0.0:8200
+      VAULT_DEV_ROOT_TOKEN_ID: myroot
+    cap_add:
+      - IPC_LOCK
+    command: ["server", "-dev"]
+
+  minio:
+    image: minio/minio
+    container_name: demo-minio
+    ports:
+      - "9000:9000"
+      - "9001:9001"
+    environment:
+      MINIO_ROOT_USER: minioadmin
+      MINIO_ROOT_PASSWORD: minioadmin
+    command: ["server", "/data", "--console-address", ":9001"]
+
+  # ================================================================
+  # v0.8.0 Framework Dependencies
+  # ================================================================
+
+  # ---- RocketMQ ----
+  rocketmq-namesrv:
+    image: apache/rocketmq:5.3.1
+    container_name: demo-rocketmq-namesrv
+    ports:
+      - "9876:9876"
+    command: sh mqnamesrv
+    environment:
+      JAVA_OPT_EXT: "-Xms256m -Xmx256m"
+
+  rocketmq-broker:
+    image: apache/rocketmq:5.3.1
+    container_name: demo-rocketmq-broker
+    ports:
+      - "10909:10909"
+      - "10911:10911"
+    depends_on:
+      - rocketmq-namesrv
+    command: sh mqbroker -n rocketmq-namesrv:9876 --enable-proxy
+    environment:
+      JAVA_OPT_EXT: "-Xms256m -Xmx512m"
+      NAMESRV_ADDR: "rocketmq-namesrv:9876"
+
+  # ---- Nacos ----
+  nacos:
+    image: nacos/nacos-server:v2.4.3-slim
+    container_name: demo-nacos
+    ports:
+      - "8848:8848"
+      - "9848:9848"
+    environment:
+      MODE: standalone
+      NACOS_AUTH_ENABLE: "false"
+
+  # ---- RabbitMQ ----
+  rabbitmq:
+    image: rabbitmq:4.0-management
+    container_name: demo-rabbitmq
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+
+  # ---- Cassandra ----
+  cassandra:
+    image: cassandra:5.0
+    container_name: demo-cassandra
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_DC: datacenter1
+      CASSANDRA_RACK: rack1
+      HEAP_NEWSIZE: 128M
+      MAX_HEAP_SIZE: 512M
+
+  # ---- Seata TC Server ----
+  seata-server:
+    image: seataio/seata-server:2.0.0
+    container_name: demo-seata
+    ports:
+      - "8091:8091"
+      - "7091:7091"
+    environment:
+      SEATA_PORT: 8091
+      STORE_MODE: file
+      SEATA_IP: localhost

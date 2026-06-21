@@ -282,14 +282,53 @@ public class NacosInspector implements ApplicationContextAware {
         return result;
     }
 
+    @SuppressWarnings("unchecked")
     private Object getNamingService() {
+        // Method 1: direct NamingService bean
         Object ns = ReflectionHelper.getFirstBeanOfType(ctx,
                 "com.alibaba.nacos.api.naming.NamingService");
-        if (ns == null) {
-            ns = ReflectionHelper.getFirstBeanOfType(ctx,
-                    "com.alibaba.cloud.nacos.NacosNamingService");
+        if (ns != null) return ns;
+
+        // Method 2: Spring Cloud Alibaba wraps it — NacosServiceManager holds it
+        Object manager = ReflectionHelper.getFirstBeanOfType(ctx,
+                "com.alibaba.cloud.nacos.NacosServiceManager");
+        if (manager != null) {
+            // Try no-arg getNamingService() first (works in 2023.x+)
+            Object service = ReflectionHelper.invokeMethod(manager, "getNamingService");
+            if (service != null) return service;
+
+            // Try getNamingService(Properties) — need to build Properties from NacosDiscoveryProperties
+            Object props = ReflectionHelper.getFirstBeanOfType(ctx,
+                    "com.alibaba.cloud.nacos.discovery.NacosDiscoveryProperties");
+            if (props != null) {
+                // Build java.util.Properties from NacosDiscoveryProperties serverAddr + namespace
+                try {
+                    String serverAddr = (String) ReflectionHelper.invokeMethod(props, "getServerAddr");
+                    String namespace = (String) ReflectionHelper.invokeMethod(props, "getNamespace");
+                    java.util.Properties p = new java.util.Properties();
+                    if (serverAddr != null) p.put("serverAddr", serverAddr);
+                    if (namespace != null) p.put("namespace", namespace);
+                    service = ReflectionHelper.invokeMethod(manager, "getNamingService", p);
+                    if (service != null) return service;
+                } catch (Exception ignored) {}
+            }
         }
-        return ns;
+
+        // Method 3: scan all beans for NamingService interface
+        try {
+            for (String name : ctx.getBeanDefinitionNames()) {
+                try {
+                    Object bean = ctx.getBean(name);
+                    for (Class<?> iface : bean.getClass().getInterfaces()) {
+                        if (iface.getName().equals("com.alibaba.nacos.api.naming.NamingService")) {
+                            return bean;
+                        }
+                    }
+                } catch (Exception ignored) {}
+            }
+        } catch (Exception ignored) {}
+
+        return null;
     }
 
     private Object getConfigService() {

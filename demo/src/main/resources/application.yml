@@ -2,11 +2,7 @@ spring:
   main:
     allow-bean-definition-overriding: true
   autoconfigure:
-    exclude:
-      - org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.cassandra.CassandraReactiveDataAutoConfiguration
-      - org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration
-      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
+    exclude: []
   application:
     name: order-management-demo
 
@@ -213,13 +209,13 @@ rocketmq:
   producer:
     group: demo-producer-group
     send-message-timeout: 3000
-  enabled: false  # Set to true when NameServer is running
+  enabled: true   # NameServer running in Docker
 
 # Nacos (fail-safe: won't crash if server unavailable)
 spring.cloud.nacos:
   discovery:
     server-addr: localhost:8848
-    register-enabled: false
+    register-enabled: true   # Nacos running in Docker
   config:
     server-addr: localhost:8848
     import-check.enabled: false
@@ -232,7 +228,7 @@ spring.cloud.sentinel:
 
 # Seata (file mode, disabled TC connection — inspector reads config + annotations)
 seata:
-  enabled: false          # Set true with running TC server to activate distributed TX
+  enabled: true             # Seata TC server running in Docker
   application-id: order-management-demo
   tx-service-group: demo-tx-group
   service:
