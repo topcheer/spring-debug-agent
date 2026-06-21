@@ -161,7 +161,7 @@ public class MyBatisInspector implements ApplicationContextAware {
 
                 // Try to get @Intercepts annotation
                 try {
-                    Class<?> interceptsClass = Class.forName("org.apache.ibatis.plugin.Intercepts");
+                    Class<?> interceptsClass = Class.forName("org.apache.ibatis.plugin.Intercepts", false, ctx.getClassLoader());
                     Object annot = interceptor.getClass().getAnnotation(
                             (Class<java.lang.annotation.Annotation>) interceptsClass);
                     if (annot != null) {
@@ -238,7 +238,7 @@ public class MyBatisInspector implements ApplicationContextAware {
                 org.springframework.beans.factory.config.BeanDefinition.class);
         int mapperCount = 0;
         try {
-            Class<?> mapperFactoryClass = Class.forName("org.mybatis.spring.mapper.MapperFactoryBean");
+            Class<?> mapperFactoryClass = Class.forName("org.mybatis.spring.mapper.MapperFactoryBean", false, ctx.getClassLoader());
             mapperCount = ctx.getBeanNamesForType(mapperFactoryClass).length;
         } catch (Exception ignored) {}
         mapperInfo.put("mapperFactoryBeanCount", mapperCount);

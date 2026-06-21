@@ -28,8 +28,8 @@ public class SentinelInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> flowRuleClass = Class.forName("com.alibaba.csp.sentinel.slots.block.flow.FlowRule");
-            Class<?> managerClass = Class.forName("com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager");
+            Class<?> flowRuleClass = Class.forName("com.alibaba.csp.sentinel.slots.block.flow.FlowRule", false, ctx.getClassLoader());
+            Class<?> managerClass = Class.forName("com.alibaba.csp.sentinel.slots.block.flow.FlowRuleManager", false, ctx.getClassLoader());
             Object rules = ReflectionHelper.invokeMethod(null == managerClass ? null :
                     managerClass, "getRules");
             // Static method
@@ -90,8 +90,7 @@ public class SentinelInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> managerClass = Class.forName(
-                    "com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager");
+            Class<?> managerClass = Class.forName("com.alibaba.csp.sentinel.slots.block.degrade.DegradeRuleManager", false, ctx.getClassLoader());
             java.lang.reflect.Method m = managerClass.getMethod("getRules");
             Object ruleList = m.invoke(null);
 
@@ -143,14 +142,11 @@ public class SentinelInspector implements ApplicationContextAware {
         try {
             if (resourceName != null && !resourceName.isBlank()) {
                 // Get metrics for specific resource
-                Class<?> statClass = Class.forName(
-                        "com.alibaba.csp.sentinel.slots.statistic.StatisticSlot");
-                Class<?> nodeClass = Class.forName(
-                        "com.alibaba.csp.sentinel.node.DefaultNode");
+                Class<?> statClass = Class.forName("com.alibaba.csp.sentinel.slots.statistic.StatisticSlot", false, ctx.getClassLoader());
+                Class<?> nodeClass = Class.forName("com.alibaba.csp.sentinel.node.DefaultNode", false, ctx.getClassLoader());
 
                 // Use ConstantTree for cluster node
-                Class<?> clusterNodeSlotClass = Class.forName(
-                        "com.alibaba.csp.sentinel.slots.cluster.ClusterBuilderSlot");
+                Class<?> clusterNodeSlotClass = Class.forName("com.alibaba.csp.sentinel.slots.cluster.ClusterBuilderSlot", false, ctx.getClassLoader());
                 java.lang.reflect.Method getClusterNode = clusterNodeSlotClass.getMethod(
                         "getClusterNode", String.class);
                 Object node = getClusterNode.invoke(null, resourceName);
@@ -174,7 +170,7 @@ public class SentinelInspector implements ApplicationContextAware {
                 }
             } else {
                 // List all resources with metrics
-                Class<?> constantsClass = Class.forName("com.alibaba.csp.sentinel.Constants");
+                Class<?> constantsClass = Class.forName("com.alibaba.csp.sentinel.Constants", false, ctx.getClassLoader());
                 java.lang.reflect.Method getRootNode = constantsClass.getMethod("getRoot");
                 Object root = getRootNode.invoke(null);
                 if (root != null) {

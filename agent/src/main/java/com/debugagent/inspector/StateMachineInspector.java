@@ -124,13 +124,28 @@ public class StateMachineInspector implements ApplicationContextAware {
 
     private List<Object> findStateMachines() {
         try {
-            Class<?> smClass = Class.forName("org.springframework.statemachine.StateMachine");
+            Class<?> smClass = Class.forName("org.springframework.statemachine.StateMachine",
+                    false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(smClass);
             List<Object> beans = new ArrayList<>();
             for (String n : names) {
                 try {
                     beans.add(ctx.getBean(n));
                 } catch (Exception ignored) {}
+            }
+            // Also try scanning all beans for StateMachine interface implementations
+            if (beans.isEmpty()) {
+                for (String name : ctx.getBeanDefinitionNames()) {
+                    try {
+                        Object bean = ctx.getBean(name);
+                        for (Class<?> iface : bean.getClass().getInterfaces()) {
+                            if (iface.getName().equals("org.springframework.statemachine.StateMachine")) {
+                                beans.add(bean);
+                                break;
+                            }
+                        }
+                    } catch (Exception ignored) {}
+                }
             }
             return beans;
         } catch (ClassNotFoundException e) {

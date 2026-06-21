@@ -178,7 +178,7 @@ public class VaultInspector implements ApplicationContextAware {
 
     private Object findVaultTemplate() {
         try {
-            Class<?> vtClass = Class.forName("org.springframework.vault.core.VaultTemplate");
+            Class<?> vtClass = Class.forName("org.springframework.vault.core.VaultTemplate", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(vtClass);
             return names.length > 0 ? ctx.getBean(names[0]) : null;
         } catch (ClassNotFoundException e) {

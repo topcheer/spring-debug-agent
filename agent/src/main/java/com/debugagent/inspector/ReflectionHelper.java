@@ -39,14 +39,36 @@ public final class ReflectionHelper {
      */
     @SuppressWarnings("unchecked")
     public static <T> List<T> getBeansOfType(ApplicationContext ctx, String className) {
+        Class<?> clazz = resolveClass(className, ctx);
+        if (clazz == null) return Collections.emptyList();
         try {
-            Class<?> clazz = Class.forName(className, false, ctx.getClassLoader());
             Map<String, ?> beans = ctx.getBeansOfType((Class<Object>) clazz);
             return new ArrayList<>((Collection<T>) beans.values());
         } catch (Exception e) {
-            log.debug("Type {} not available: {}", className, e.getMessage());
+            log.debug("getBeansOfType failed for {}: {}", className, e.getMessage());
             return Collections.emptyList();
         }
+    }
+
+    /**
+     * Resolve a class by name using multiple classloaders (app context, current thread,
+     * this class, system) to handle fat-jar and multi-classloader scenarios.
+     */
+    public static Class<?> resolveClass(String className, ApplicationContext ctx) {
+        ClassLoader[] loaders = new ClassLoader[] {
+            ctx != null ? ctx.getClassLoader() : null,
+            Thread.currentThread().getContextClassLoader(),
+            ReflectionHelper.class.getClassLoader(),
+            ClassLoader.getSystemClassLoader()
+        };
+        for (ClassLoader cl : loaders) {
+            if (cl == null) continue;
+            try {
+                return Class.forName(className, false, cl);
+            } catch (Throwable ignored) {}
+        }
+        log.debug("Type {} not available in any classloader", className);
+        return null;
     }
 
     /**
@@ -175,13 +197,21 @@ public final class ReflectionHelper {
      * Check if a class is available on the classpath (using the given context's ClassLoader if provided).
      */
     public static boolean isClassAvailable(String className, ApplicationContext ctx) {
-        try {
-            ClassLoader cl = ctx != null ? ctx.getClassLoader() : Thread.currentThread().getContextClassLoader();
-            Class.forName(className, false, cl);
-            return true;
-        } catch (Throwable e) {
-            return false;
+        // Try multiple classloaders in order of preference
+        ClassLoader[] loaders = new ClassLoader[] {
+            ctx != null ? ctx.getClassLoader() : null,
+            Thread.currentThread().getContextClassLoader(),
+            ReflectionHelper.class.getClassLoader(),
+            ClassLoader.getSystemClassLoader()
+        };
+        for (ClassLoader cl : loaders) {
+            if (cl == null) continue;
+            try {
+                Class.forName(className, false, cl);
+                return true;
+            } catch (Throwable ignored) {}
         }
+        return false;
     }
 
     /**

@@ -107,7 +107,7 @@ public class ObjectStorageInspector implements ApplicationContextAware {
             result.put("bucket", bucket);
             result.put("key", key);
             try {
-                Class<?> reqClass = Class.forName("software.amazon.awssdk.services.s3.model.HeadObjectRequest");
+                Class<?> reqClass = Class.forName("software.amazon.awssdk.services.s3.model.HeadObjectRequest", false, ctx.getClassLoader());
                 Object req = buildRequest(reqClass, bucket, key, "bucket", "key");
                 if (req == null) {
                     result.put("error", "Failed to build HeadObjectRequest");
@@ -140,7 +140,7 @@ public class ObjectStorageInspector implements ApplicationContextAware {
             result.put("bucket", bucket);
             result.put("key", key);
             try {
-                Class<?> argsClass = Class.forName("io.minio.StatObjectArgs");
+                Class<?> argsClass = Class.forName("io.minio.StatObjectArgs", false, ctx.getClassLoader());
                 Object args = buildRequest(argsClass, bucket, key, "bucket", "object");
                 if (args == null) {
                     result.put("error", "Failed to build StatObjectArgs");
@@ -171,7 +171,7 @@ public class ObjectStorageInspector implements ApplicationContextAware {
 
     private Object findS3Client() {
         try {
-            Class<?> s3ClientClass = Class.forName("software.amazon.awssdk.services.s3.S3Client");
+            Class<?> s3ClientClass = Class.forName("software.amazon.awssdk.services.s3.S3Client", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(s3ClientClass);
             return names.length > 0 ? ctx.getBean(names[0]) : null;
         } catch (ClassNotFoundException e) {
@@ -183,7 +183,7 @@ public class ObjectStorageInspector implements ApplicationContextAware {
 
     private Object findMinioClient() {
         try {
-            Class<?> minioClientClass = Class.forName("io.minio.MinioClient");
+            Class<?> minioClientClass = Class.forName("io.minio.MinioClient", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(minioClientClass);
             return names.length > 0 ? ctx.getBean(names[0]) : null;
         } catch (ClassNotFoundException e) {
@@ -198,7 +198,7 @@ public class ObjectStorageInspector implements ApplicationContextAware {
      */
     private Object getObjectCount(Object s3Client, String bucketName) {
         try {
-            Class<?> reqClass = Class.forName("software.amazon.awssdk.services.s3.model.ListObjectsV2Request");
+            Class<?> reqClass = Class.forName("software.amazon.awssdk.services.s3.model.ListObjectsV2Request", false, ctx.getClassLoader());
             Object req = buildRequest(reqClass, bucketName, null, "bucket", null);
             if (req == null) return null;
             Method listObjectsV2 = s3Client.getClass().getMethod("listObjectsV2", reqClass);

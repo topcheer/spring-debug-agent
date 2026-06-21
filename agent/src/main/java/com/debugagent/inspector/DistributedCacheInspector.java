@@ -192,7 +192,7 @@ public class DistributedCacheInspector implements ApplicationContextAware {
 
     private List<Object> beansOfType(String className) {
         try {
-            Class<?> clazz = Class.forName(className);
+            Class<?> clazz = Class.forName(className, false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(clazz);
             List<Object> beans = new ArrayList<>();
             for (String n : names) {

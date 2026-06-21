@@ -55,8 +55,7 @@ public class RestClientInspector implements ApplicationContextAware {
 
                 // Also try RestClient (Spring 6.1+)
                 try {
-                    Class<?> restClientClass = Class.forName(
-                            "org.springframework.web.client.RestClient");
+                    Class<?> restClientClass = Class.forName("org.springframework.web.client.RestClient", false, ctx.getClassLoader());
                     Map<String, ?> restClients = ctx.getBeansOfType(restClientClass);
                     // RestClient interceptors are harder to inject — skip for now
                     // but note their existence

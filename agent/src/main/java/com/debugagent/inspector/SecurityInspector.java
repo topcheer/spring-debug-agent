@@ -31,7 +31,7 @@ public class SecurityInspector implements ApplicationContextAware {
             Map<String, Object> chains = new LinkedHashMap<>();
             try {
                 String[] chainNames = ctx.getBeanNamesForType(
-                        Class.forName("org.springframework.security.web.SecurityFilterChain"));
+                        Class.forName("org.springframework.security.web.SecurityFilterChain", false, ctx.getClassLoader()));
                 for (String name : chainNames) {
                     Object chain = ctx.getBean(name);
                     Map<String, Object> chainInfo = new LinkedHashMap<>();
@@ -72,7 +72,7 @@ public class SecurityInspector implements ApplicationContextAware {
             // UserDetailsService
             try {
                 String[] udsNames = ctx.getBeanNamesForType(
-                        Class.forName("org.springframework.security.core.userdetails.UserDetailsService"));
+                        Class.forName("org.springframework.security.core.userdetails.UserDetailsService", false, ctx.getClassLoader()));
                 List<Map<String, Object>> udsList = new ArrayList<>();
                 for (String name : udsNames) {
                     Map<String, Object> info = new LinkedHashMap<>();
@@ -87,7 +87,7 @@ public class SecurityInspector implements ApplicationContextAware {
             // Password encoder
             try {
                 String[] encoders = ctx.getBeanNamesForType(
-                        Class.forName("org.springframework.security.crypto.password.PasswordEncoder"));
+                        Class.forName("org.springframework.security.crypto.password.PasswordEncoder", false, ctx.getClassLoader()));
                 for (String name : encoders) {
                     result.put("passwordEncoder", ctx.getBean(name).getClass().getSimpleName());
                 }
@@ -96,7 +96,7 @@ public class SecurityInspector implements ApplicationContextAware {
             // Authentication manager
             try {
                 String[] authMgrs = ctx.getBeanNamesForType(
-                        Class.forName("org.springframework.security.authentication.AuthenticationManager"));
+                        Class.forName("org.springframework.security.authentication.AuthenticationManager", false, ctx.getClassLoader()));
                 List<String> authMgrList = new ArrayList<>();
                 for (String name : authMgrs) {
                     authMgrList.add(name + " (" + ctx.getBean(name).getClass().getSimpleName() + ")");
@@ -119,8 +119,7 @@ public class SecurityInspector implements ApplicationContextAware {
         Map<String, Object> result = new LinkedHashMap<>();
 
         try {
-            Class<?> secCtxHolder = Class.forName(
-                    "org.springframework.security.core.context.SecurityContextHolder");
+            Class<?> secCtxHolder = Class.forName("org.springframework.security.core.context.SecurityContextHolder", false, ctx.getClassLoader());
             Method getContext = secCtxHolder.getMethod("getContext");
             Object context = getContext.invoke(null);
             Method getAuthentication = context.getClass().getMethod("getAuthentication");
@@ -182,7 +181,7 @@ public class SecurityInspector implements ApplicationContextAware {
         try {
             // Try to find session registry
             String[] registryNames = ctx.getBeanNamesForType(
-                    Class.forName("org.springframework.security.core.session.SessionRegistry"));
+                    Class.forName("org.springframework.security.core.session.SessionRegistry", false, ctx.getClassLoader()));
             if (registryNames.length > 0) {
                 Object registry = ctx.getBean(registryNames[0]);
                 Method getAllPrincipals = registry.getClass().getMethod("getAllPrincipals");
@@ -249,7 +248,7 @@ public class SecurityInspector implements ApplicationContextAware {
             // Check for AuthenticationEventPublisher
             try {
                 String[] names = ctx.getBeanNamesForType(
-                        Class.forName("org.springframework.security.authentication.DefaultAuthenticationEventPublisher"));
+                        Class.forName("org.springframework.security.authentication.DefaultAuthenticationEventPublisher", false, ctx.getClassLoader()));
                 if (names.length > 0) {
                     Map<String, Object> info = new LinkedHashMap<>();
                     info.put("component", "DefaultAuthenticationEventPublisher");

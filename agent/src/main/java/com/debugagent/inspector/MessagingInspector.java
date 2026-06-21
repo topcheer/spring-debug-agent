@@ -31,13 +31,17 @@ public class MessagingInspector implements ApplicationContextAware {
         try {
             // Try Spring Kafka's KafkaListenerEndpointRegistry
             String[] registryNames = ctx.getBeanNamesForType(
-                    Class.forName("org.springframework.kafka.config.KafkaListenerEndpointRegistry"));
+                    Class.forName("org.springframework.kafka.config.KafkaListenerEndpointRegistry", false, ctx.getClassLoader()));
 
             for (String name : registryNames) {
                 Object registry = ctx.getBean(name);
                 Method getContainers = registry.getClass().getMethod("getListenerContainers");
-                @SuppressWarnings("unchecked")
-                List<Object> containers = (List<Object>) getContainers.invoke(registry);
+                // Spring Kafka returns Collection, not List — use ArrayList to avoid ClassCastException
+                Collection<Object> containers = new ArrayList<>();
+                Object raw = getContainers.invoke(registry);
+                if (raw instanceof Collection) {
+                    containers.addAll((Collection<?>) raw);
+                }
 
                 for (Object container : containers) {
                     Map<String, Object> info = new LinkedHashMap<>();
@@ -98,7 +102,7 @@ public class MessagingInspector implements ApplicationContextAware {
 
         // Kafka topics
         try {
-            Class<?> adminClass = Class.forName("org.springframework.kafka.core.KafkaAdmin");
+            Class<?> adminClass = Class.forName("org.springframework.kafka.core.KafkaAdmin", false, ctx.getClassLoader());
             String[] adminNames = ctx.getBeanNamesForType(adminClass);
             if (adminNames.length > 0) {
                 Object admin = ctx.getBean(adminNames[0]);
@@ -109,7 +113,7 @@ public class MessagingInspector implements ApplicationContextAware {
                     Object clientFactory = ReflectionHelper.invokeMethod(admin, "getProducerFactory");
                     if (clientFactory != null) {
                         Object txManager = ctx.getBean(
-                                Class.forName("org.springframework.kafka.core.KafkaTemplate"));
+                                Class.forName("org.springframework.kafka.core.KafkaTemplate", false, ctx.getClassLoader()));
                         if (txManager != null) {
                             Method getDefaultTopic = txManager.getClass().getMethod("getDefaultTopic");
                             Object def = getDefaultTopic.invoke(txManager);
@@ -122,7 +126,7 @@ public class MessagingInspector implements ApplicationContextAware {
 
         // RabbitMQ queues
         try {
-            Class<?> amqpAdminClass = Class.forName("org.springframework.amqp.core.AmqpAdmin");
+            Class<?> amqpAdminClass = Class.forName("org.springframework.amqp.core.AmqpAdmin", false, ctx.getClassLoader());
             String[] amqpNames = ctx.getBeanNamesForType(amqpAdminClass);
             if (amqpNames.length > 0) {
                 Object amqpAdmin = ctx.getBean(amqpNames[0]);
@@ -143,7 +147,7 @@ public class MessagingInspector implements ApplicationContextAware {
 
         // Kafka DLQ topics (common naming patterns)
         try {
-            Class<?> templateClass = Class.forName("org.springframework.kafka.core.KafkaTemplate");
+            Class<?> templateClass = Class.forName("org.springframework.kafka.core.KafkaTemplate", false, ctx.getClassLoader());
             String[] templateNames = ctx.getBeanNamesForType(templateClass);
             for (String name : templateNames) {
                 Object template = ctx.getBean(name);
@@ -161,7 +165,7 @@ public class MessagingInspector implements ApplicationContextAware {
 
         // RabbitMQ DLQ detection
         try {
-            Class<?> rabbitAdminClass = Class.forName("org.springframework.amqp.rabbit.core.RabbitAdmin");
+            Class<?> rabbitAdminClass = Class.forName("org.springframework.amqp.rabbit.core.RabbitAdmin", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(rabbitAdminClass);
             for (String name : names) {
                 Object admin = ctx.getBean(name);
@@ -175,8 +179,7 @@ public class MessagingInspector implements ApplicationContextAware {
 
         // Kafka error handler DLQ
         try {
-            Class<?> errorHandlerClass = Class.forName(
-                    "org.springframework.kafka.listener.DeadLetterPublishingRecoverer");
+            Class<?> errorHandlerClass = Class.forName("org.springframework.kafka.listener.DeadLetterPublishingRecoverer", false, ctx.getClassLoader());
             String[] handlerNames = ctx.getBeanNamesForType(errorHandlerClass);
             if (handlerNames.length > 0) {
                 for (String name : handlerNames) {

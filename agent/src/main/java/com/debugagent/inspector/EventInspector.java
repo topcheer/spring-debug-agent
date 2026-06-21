@@ -165,8 +165,7 @@ public class EventInspector implements ApplicationContextAware {
             Object eventType = null;
             try {
                 // GenericApplicationListener supportsEventType
-                Class<?> genericInterface = Class.forName(
-                        "org.springframework.context.event.GenericApplicationListener");
+                Class<?> genericInterface = Class.forName("org.springframework.context.event.GenericApplicationListener", false, ctx.getClassLoader());
                 if (genericInterface.isInstance(listener)) {
                     info.put("type", "GenericApplicationListener");
                 }

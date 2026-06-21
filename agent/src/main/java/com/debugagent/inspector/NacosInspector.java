@@ -263,7 +263,7 @@ public class NacosInspector implements ApplicationContextAware {
         try {
             var beans = ctx.getBeansWithAnnotation(
                     (Class<? extends java.lang.annotation.Annotation>)
-                            (Class<?>) Class.forName("com.alibaba.nacos.api.config.annotation.NacosConfigListener"));
+                            (Class<?>) Class.forName("com.alibaba.nacos.api.config.annotation.NacosConfigListener", false, ctx.getClassLoader()));
             if (!beans.isEmpty()) {
                 for (var e : beans.entrySet()) {
                     Map<String, Object> l = new LinkedHashMap<>();

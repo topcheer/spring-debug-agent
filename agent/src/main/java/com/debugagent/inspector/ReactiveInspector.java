@@ -30,7 +30,7 @@ public class ReactiveInspector implements ApplicationContextAware {
             // Check for reactive web context
             boolean isReactive = false;
             try {
-                ctx.getBean(Class.forName("org.springframework.web.reactive.DispatcherHandler"));
+                ctx.getBean(Class.forName("org.springframework.web.reactive.DispatcherHandler", false, ctx.getClassLoader()));
                 isReactive = true;
             } catch (Exception ignored) {}
 
@@ -38,7 +38,7 @@ public class ReactiveInspector implements ApplicationContextAware {
 
             // Check for Schedulers
             try {
-                Class<?> schedulersClass = Class.forName("reactor.core.scheduler.Schedulers");
+                Class<?> schedulersClass = Class.forName("reactor.core.scheduler.Schedulers", false, ctx.getClassLoader());
                 Method currentMethod = schedulersClass.getMethod("parallel");
                 Object parallel = currentMethod.invoke(null);
                 if (parallel != null) {
@@ -57,13 +57,13 @@ public class ReactiveInspector implements ApplicationContextAware {
             // Check for WebClient
             try {
                 String[] wcNames = ctx.getBeanNamesForType(
-                        Class.forName("org.springframework.web.reactive.function.client.WebClient"));
+                        Class.forName("org.springframework.web.reactive.function.client.WebClient", false, ctx.getClassLoader()));
                 result.put("webClientBeans", wcNames.length);
             } catch (Exception ignored) {}
 
             // Flux/Mono info via context key
             try {
-                Class<?> contextViewClass = Class.forName("reactor.util.context.ContextView");
+                Class<?> contextViewClass = Class.forName("reactor.util.context.ContextView", false, ctx.getClassLoader());
                 result.put("contextApiAvailable", true);
             } catch (Exception ignored) {}
 

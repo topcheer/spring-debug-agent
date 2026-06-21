@@ -43,7 +43,7 @@ public class JpaInspector implements ApplicationContextAware {
             Object sessionFactory = null;
             try {
                 Method unwrap = emf.getClass().getMethod("unwrap", Class.class);
-                sessionFactory = unwrap.invoke(emf, Class.forName("org.hibernate.SessionFactory"));
+                sessionFactory = unwrap.invoke(emf, Class.forName("org.hibernate.SessionFactory", false, ctx.getClassLoader()));
             } catch (Exception ignored) {}
 
             if (sessionFactory == null) {

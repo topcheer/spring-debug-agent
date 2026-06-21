@@ -24,7 +24,7 @@ public class RedisInspector implements ApplicationContextAware {
 
     @SuppressWarnings("unchecked")
     private Object getConnection() throws Exception {
-        Class<?> factoryClass = Class.forName("org.springframework.data.redis.connection.RedisConnectionFactory");
+        Class<?> factoryClass = Class.forName("org.springframework.data.redis.connection.RedisConnectionFactory", false, ctx.getClassLoader());
         Object factory = ctx.getBean(factoryClass);
         Method connect = factoryClass.getMethod("getConnection");
         return connect.invoke(factory);

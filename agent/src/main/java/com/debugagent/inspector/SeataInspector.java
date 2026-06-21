@@ -29,7 +29,7 @@ public class SeataInspector implements ApplicationContextAware {
 
         // RootContext (active transaction info)
         try {
-            Class<?> rootContextClass = Class.forName("io.seata.core.context.RootContext");
+            Class<?> rootContextClass = Class.forName("io.seata.core.context.RootContext", false, ctx.getClassLoader());
             java.lang.reflect.Method getXID = rootContextClass.getMethod("getXID");
             Object xid = getXID.invoke(null);
             result.put("currentXid", xid != null ? xid : "none (no active global transaction)");
@@ -103,7 +103,7 @@ public class SeataInspector implements ApplicationContextAware {
         Map<String, Object> result = new LinkedHashMap<>();
 
         try {
-            Class<?> rmConfigClass = Class.forName("io.seata.rm.RMClient");
+            Class<?> rmConfigClass = Class.forName("io.seata.rm.RMClient", false, ctx.getClassLoader());
             // Get RM client config from system properties or Spring
             String[] rmProps = {
                     "seata.client.rm.async-commit-buffer-limit",

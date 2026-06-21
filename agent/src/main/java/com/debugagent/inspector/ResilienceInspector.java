@@ -29,7 +29,7 @@ public class ResilienceInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> registryClass = Class.forName("io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry");
+            Class<?> registryClass = Class.forName("io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry", false, ctx.getClassLoader());
             String[] registryNames = ctx.getBeanNamesForType(registryClass);
 
             for (String regName : registryNames) {
@@ -78,9 +78,9 @@ public class ResilienceInspector implements ApplicationContextAware {
                         cfg.put("slowCallRateThreshold",
                                 ReflectionHelper.invokeMethod(config, "getSlowCallRateThreshold"));
                         cfg.put("slowCallDurationThreshold",
-                                ReflectionHelper.invokeMethod(config, "getSlowCallDurationThreshold"));
+                                durationToString(ReflectionHelper.invokeMethod(config, "getSlowCallDurationThreshold")));
                         cfg.put("maxWaitDurationInHalfOpenState",
-                                ReflectionHelper.invokeMethod(config, "getMaxWaitDurationInHalfOpenState"));
+                                durationToString(ReflectionHelper.invokeMethod(config, "getMaxWaitDurationInHalfOpenState")));
                         cfg.put("slidingWindowSize",
                                 ReflectionHelper.invokeMethod(config, "getSlidingWindowSize"));
                         cfg.put("minimumNumberOfCalls",
@@ -107,7 +107,7 @@ public class ResilienceInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> registryClass = Class.forName("io.github.resilience4j.retry.RetryRegistry");
+            Class<?> registryClass = Class.forName("io.github.resilience4j.retry.RetryRegistry", false, ctx.getClassLoader());
             String[] registryNames = ctx.getBeanNamesForType(registryClass);
 
             for (String regName : registryNames) {
@@ -126,7 +126,7 @@ public class ResilienceInspector implements ApplicationContextAware {
                     if (config != null) {
                         Map<String, Object> cfg = new LinkedHashMap<>();
                         cfg.put("maxAttempts", ReflectionHelper.invokeMethod(config, "getMaxAttempts"));
-                        cfg.put("waitDuration", ReflectionHelper.invokeMethod(config, "getWaitDuration"));
+                        cfg.put("waitDuration", durationToString(ReflectionHelper.invokeMethod(config, "getWaitDuration")));
                         info.put("config", cfg);
                     }
 
@@ -165,7 +165,7 @@ public class ResilienceInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> registryClass = Class.forName("io.github.resilience4j.ratelimiter.RateLimiterRegistry");
+            Class<?> registryClass = Class.forName("io.github.resilience4j.ratelimiter.RateLimiterRegistry", false, ctx.getClassLoader());
             String[] registryNames = ctx.getBeanNamesForType(registryClass);
 
             for (String regName : registryNames) {
@@ -199,7 +199,7 @@ public class ResilienceInspector implements ApplicationContextAware {
                         cfg.put("limitRefreshPeriod",
                                 ReflectionHelper.invokeMethod(config, "getLimitRefreshPeriod"));
                         cfg.put("timeoutDuration",
-                                ReflectionHelper.invokeMethod(config, "getTimeoutDuration"));
+                                durationToString(ReflectionHelper.invokeMethod(config, "getTimeoutDuration")));
                         info.put("config", cfg);
                     }
 
@@ -227,7 +227,7 @@ public class ResilienceInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> registryClass = Class.forName("io.github.resilience4j.ratelimiter.RateLimiterRegistry");
+            Class<?> registryClass = Class.forName("io.github.resilience4j.ratelimiter.RateLimiterRegistry", false, ctx.getClassLoader());
             String[] registryNames = ctx.getBeanNamesForType(registryClass);
 
             for (String regName : registryNames) {
@@ -270,5 +270,21 @@ public class ResilienceInspector implements ApplicationContextAware {
         }
 
         return result;
+    }
+
+    /**
+     * Convert a java.time.Duration (or any object) to a human-readable string
+     * to avoid Jackson JSR310 serialization issues.
+     */
+    private static String durationToString(Object duration) {
+        if (duration == null) return "null";
+        String s = duration.toString();  // Duration.toString() -> "PT2S", etc.
+        // Convert ISO-8601 duration to readable format
+        return s.replace("PT", "")
+                .replace("H", "h ")
+                .replace("M", "m ")
+                .replace("S", "s")
+                .replaceAll("\\s+$", "")
+                .trim();
     }
 }

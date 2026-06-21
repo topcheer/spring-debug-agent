@@ -235,8 +235,7 @@ public class OpenApiInspector implements ApplicationContextAware {
 
         Set<String> livePaths = new TreeSet<>();
         try {
-            Class<?> mappingClass = Class.forName(
-                    "org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping");
+            Class<?> mappingClass = Class.forName("org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(mappingClass);
             if (names.length > 0) {
                 Object handler = ctx.getBean(names[0]);
@@ -280,7 +279,7 @@ public class OpenApiInspector implements ApplicationContextAware {
     private Object findOpenApi() {
         // 1. SpringDoc OpenApiResource — call getOpenApi() (generates full spec with paths)
         try {
-            Class<?> resourceClass = Class.forName("org.springdoc.api.OpenApiResource");
+            Class<?> resourceClass = Class.forName("org.springdoc.api.OpenApiResource", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(resourceClass);
             if (names.length > 0) {
                 Object resource = ctx.getBean(names[0]);
@@ -296,7 +295,7 @@ public class OpenApiInspector implements ApplicationContextAware {
 
         // 2. OpenAPIService bean
         try {
-            Class<?> serviceClass = Class.forName("org.springdoc.core.service.OpenAPIService");
+            Class<?> serviceClass = Class.forName("org.springdoc.core.service.OpenAPIService", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(serviceClass);
             if (names.length > 0) {
                 Object service = ctx.getBean(names[0]);
@@ -308,7 +307,7 @@ public class OpenApiInspector implements ApplicationContextAware {
 
         // 3. Static io.swagger.v3.oas.models.OpenAPI bean (may have limited paths)
         try {
-            Class<?> openApiClass = Class.forName("io.swagger.v3.oas.models.OpenAPI");
+            Class<?> openApiClass = Class.forName("io.swagger.v3.oas.models.OpenAPI", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(openApiClass);
             if (names.length > 0) return ctx.getBean(names[0]);
         } catch (ClassNotFoundException ignored) {

@@ -104,11 +104,29 @@ public class OAuth2Inspector implements ApplicationContextAware {
                     if (info != null) results.add(info);
                 }
             } else {
-                Map<String, Object> info = new LinkedHashMap<>();
-                info.put("repositoryClass", repo.getClass().getSimpleName());
-                info.put("note", "RegisteredClientRepository present but findAll() not available. " +
-                        "Clients may be persisted in a database — query the underlying store directly.");
-                results.add(info);
+                // Fallback: try reading the internal 'clients' map field (InMemoryRegisteredClientRepository)
+                try {
+                    Object fieldVal = ReflectionHelper.getFieldValue(repo, "clients");
+                    if (fieldVal instanceof Iterable<?> fieldIter) {
+                        for (Object entry : fieldIter) {
+                            // entries may be Map.Entry<id, RegisteredClient>
+                            Object client = entry;
+                            if (entry instanceof Map.Entry<?, ?> me) {
+                                client = me.getValue();
+                            }
+                            Map<String, Object> info = describeClient(client);
+                            if (info != null) results.add(info);
+                        }
+                    }
+                } catch (Exception ignored) {}
+
+                if (results.isEmpty()) {
+                    Map<String, Object> info = new LinkedHashMap<>();
+                    info.put("repositoryClass", repo.getClass().getSimpleName());
+                    info.put("note", "RegisteredClientRepository present but findAll() not available. " +
+                            "Clients may be persisted in a database — query the underlying store directly.");
+                    results.add(info);
+                }
             }
         }
 

@@ -148,7 +148,7 @@ public class GraphQLInspector implements ApplicationContextAware {
     private Object findGraphQLSchema() {
         // 1. Try a direct GraphQLSchema bean
         try {
-            Class<?> schemaClass = Class.forName("graphql.schema.GraphQLSchema");
+            Class<?> schemaClass = Class.forName("graphql.schema.GraphQLSchema", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(schemaClass);
             if (names.length > 0) return ctx.getBean(names[0]);
         } catch (ClassNotFoundException ignored) {
@@ -156,7 +156,7 @@ public class GraphQLInspector implements ApplicationContextAware {
 
         // 2. Spring GraphQL: GraphQLSource / graphQlSource bean exposes getSchema()
         try {
-            Class<?> sourceClass = Class.forName("org.springframework.graphql.execution.GraphQlSource");
+            Class<?> sourceClass = Class.forName("org.springframework.graphql.execution.GraphQlSource", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(sourceClass);
             if (names.length > 0) {
                 Object source = ctx.getBean(names[0]);
@@ -168,7 +168,7 @@ public class GraphQLInspector implements ApplicationContextAware {
 
         // 3. graphql.GraphQL bean -> getGraphqlSchema()
         try {
-            Class<?> graphQLClass = Class.forName("graphql.GraphQL");
+            Class<?> graphQLClass = Class.forName("graphql.GraphQL", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(graphQLClass);
             if (names.length > 0) {
                 Object graphQL = ctx.getBean(names[0]);

@@ -28,7 +28,7 @@ public class CloudInspector implements ApplicationContextAware {
 
         // Eureka
         try {
-            Class<?> eurekaClientClass = Class.forName("com.netflix.discovery.EurekaClient");
+            Class<?> eurekaClientClass = Class.forName("com.netflix.discovery.EurekaClient", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(eurekaClientClass);
             if (names.length > 0) {
                 Object client = ctx.getBean(names[0]);
@@ -81,7 +81,7 @@ public class CloudInspector implements ApplicationContextAware {
 
         // Consul
         try {
-            Class<?> consulClientClass = Class.forName("com.ecwid.consul.v1.ConsulClient");
+            Class<?> consulClientClass = Class.forName("com.ecwid.consul.v1.ConsulClient", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(consulClientClass);
             if (names.length > 0) {
                 result.put("discoveryType", "Consul");
@@ -92,7 +92,7 @@ public class CloudInspector implements ApplicationContextAware {
 
         // Nacos
         try {
-            Class<?> namingServiceClass = Class.forName("com.alibaba.nacos.api.naming.NamingService");
+            Class<?> namingServiceClass = Class.forName("com.alibaba.nacos.api.naming.NamingService", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(namingServiceClass);
             if (names.length > 0) {
                 result.put("discoveryType", "Nacos");
@@ -112,8 +112,7 @@ public class CloudInspector implements ApplicationContextAware {
         try {
             // Check for Config Server client
             try {
-                Class<?> configClientClass = Class.forName(
-                        "org.springframework.cloud.config.client.ConfigServicePropertySourceLocator");
+                Class<?> configClientClass = Class.forName("org.springframework.cloud.config.client.ConfigServicePropertySourceLocator", false, ctx.getClassLoader());
                 String[] names = ctx.getBeanNamesForType(configClientClass);
                 if (names.length > 0) {
                     result.put("configServer", "enabled");
@@ -132,8 +131,7 @@ public class CloudInspector implements ApplicationContextAware {
 
             // Check for @RefreshScope beans
             try {
-                Class<?> refreshScopeClass = Class.forName(
-                        "org.springframework.cloud.context.scope.refresh.RefreshScope");
+                Class<?> refreshScopeClass = Class.forName("org.springframework.cloud.context.scope.refresh.RefreshScope", false, ctx.getClassLoader());
                 String[] names = ctx.getBeanNamesForType(refreshScopeClass);
                 if (names.length > 0) {
                     Object scope = ctx.getBean(names[0]);
@@ -168,8 +166,7 @@ public class CloudInspector implements ApplicationContextAware {
         List<Map<String, Object>> result = new ArrayList<>();
 
         try {
-            Class<?> cbFactoryClass = Class.forName(
-                    "org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory");
+            Class<?> cbFactoryClass = Class.forName("org.springframework.cloud.client.circuitbreaker.CircuitBreakerFactory", false, ctx.getClassLoader());
             String[] names = ctx.getBeanNamesForType(cbFactoryClass);
             if (names.length > 0) {
                 Object factory = ctx.getBean(names[0]);
@@ -195,7 +192,7 @@ public class CloudInspector implements ApplicationContextAware {
 
         // Also check Resilience4j registry directly
         try {
-            Class<?> registryClass = Class.forName("io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry");
+            Class<?> registryClass = Class.forName("io.github.resilience4j.circuitbreaker.CircuitBreakerRegistry", false, ctx.getClassLoader());
             String[] registryNames = ctx.getBeanNamesForType(registryClass);
             if (registryNames.length > 0) {
                 Object registry = ctx.getBean(registryNames[0]);

@@ -65,7 +65,7 @@ public class SqlInspector implements ApplicationContextAware {
 
                 // Connection pool stats via Hikari
                 try {
-                    Object hikariDs = conn.unwrap(Class.forName("com.zaxxer.hikari.HikariDataSource"));
+                    Object hikariDs = conn.unwrap(Class.forName("com.zaxxer.hikari.HikariDataSource", false, ctx.getClassLoader()));
                     if (hikariDs != null) {
                         Object pool = ReflectionHelper.invokeMethod(hikariDs, "getHikariPoolMXBean");
                         if (pool != null) {
@@ -103,10 +103,10 @@ public class SqlInspector implements ApplicationContextAware {
         try {
             // Try to get Hibernate Statistics
             String[] emfNames = ctx.getBeanNamesForType(
-                    Class.forName("org.springframework.orm.jpa.EntityManagerFactory"));
+                    Class.forName("org.springframework.orm.jpa.EntityManagerFactory", false, ctx.getClassLoader()));
             if (emfNames.length == 0) {
                 emfNames = ctx.getBeanNamesForType(
-                        Class.forName("jakarta.persistence.EntityManagerFactory"));
+                        Class.forName("jakarta.persistence.EntityManagerFactory", false, ctx.getClassLoader()));
             }
 
             for (String name : emfNames) {
@@ -114,7 +114,7 @@ public class SqlInspector implements ApplicationContextAware {
                 Object sessionFactory;
                 try {
                     Method unwrap = emf.getClass().getMethod("unwrap", Class.class);
-                    sessionFactory = unwrap.invoke(emf, Class.forName("org.hibernate.engine.spi.SessionFactoryImplementor"));
+                    sessionFactory = unwrap.invoke(emf, Class.forName("org.hibernate.engine.spi.SessionFactoryImplementor", false, ctx.getClassLoader()));
                 } catch (Exception ex) { continue; }
 
                 if (sessionFactory == null) continue;
@@ -165,7 +165,7 @@ public class SqlInspector implements ApplicationContextAware {
 
             // Try HikariCP leak detection
             try {
-                Object hikariDs = ds.unwrap(Class.forName("com.zaxxer.hikari.HikariDataSource"));
+                Object hikariDs = ds.unwrap(Class.forName("com.zaxxer.hikari.HikariDataSource", false, ctx.getClassLoader()));
                 if (hikariDs != null) {
                     Map<String, Object> hikariInfo = new LinkedHashMap<>();
 

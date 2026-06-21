@@ -57,7 +57,7 @@ public class ClassloadingInspector {
         Map<String, Object> result = new LinkedHashMap<>();
 
         try {
-            Class<?> clazz = Class.forName(className);
+            Class<?> clazz = Class.forName(className, false, Thread.currentThread().getContextClassLoader());
             result.put("className", className);
             result.put("classLoader", clazz.getClassLoader() != null
                     ? clazz.getClassLoader().getClass().getName()

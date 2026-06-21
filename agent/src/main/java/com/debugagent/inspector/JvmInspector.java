@@ -352,7 +352,7 @@ public class JvmInspector {
 
             // Add netty direct memory estimate if Netty is present
             try {
-                Class<?> cleanerClass = Class.forName("io.netty.util.internal.CleanerJava9");
+                Class<?> cleanerClass = Class.forName("io.netty.util.internal.CleanerJava9", false, Thread.currentThread().getContextClassLoader());
                 result.put("nettyDetected", true);
             } catch (ClassNotFoundException notNetty) {
                 // Not using Netty — that's fine

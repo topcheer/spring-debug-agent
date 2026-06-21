@@ -155,7 +155,7 @@ public class ZookeeperInspector implements ApplicationContextAware {
         if (zk != null) {
             try {
                 // Create a Stat holder via reflection
-                Class<?> statClass = Class.forName("org.apache.zookeeper.data.Stat");
+                Class<?> statClass = Class.forName("org.apache.zookeeper.data.Stat", false, ctx.getClassLoader());
                 Object stat = statClass.getDeclaredConstructor().newInstance();
                 Object data = ReflectionHelper.invokeMethod(zk, "getData", path, false, stat);
                 if (data instanceof byte[]) {

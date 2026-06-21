@@ -120,8 +120,7 @@ public class FeatureFlagInspector implements ApplicationContextAware {
         try {
             // ConditionEvaluationReport is accessible via a static method on AutoConfigurationImportListener
             // or via ConfigurableListableBeanFactory attribute
-            Class<?> reportClass = Class.forName(
-                    "org.springframework.boot.autoconfigure.condition.ConditionEvaluationReport");
+            Class<?> reportClass = Class.forName("org.springframework.boot.autoconfigure.condition.ConditionEvaluationReport", false, ctx.getClassLoader());
             // Try to get from bean factory
             Object beanFactory = ctx.getAutowireCapableBeanFactory();
             if (beanFactory instanceof org.springframework.beans.factory.config.ConfigurableListableBeanFactory clf) {

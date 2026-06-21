@@ -29,7 +29,7 @@ public class MigrationInspector implements ApplicationContextAware {
 
         // Try Flyway
         try {
-            Class<?> flywayClass = Class.forName("org.flywaydb.core.Flyway");
+            Class<?> flywayClass = Class.forName("org.flywaydb.core.Flyway", false, ctx.getClassLoader());
             String[] flywayNames = ctx.getBeanNamesForType(flywayClass);
             if (flywayNames.length > 0) {
                 Object flyway = ctx.getBean(flywayNames[0]);
@@ -83,10 +83,9 @@ public class MigrationInspector implements ApplicationContextAware {
 
         // Try Liquibase
         try {
-            Class<?> springLiquibaseClass = Class.forName(
-                    "org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration");
+            Class<?> springLiquibaseClass = Class.forName("org.springframework.boot.autoconfigure.liquibase.LiquibaseAutoConfiguration", false, ctx.getClassLoader());
             String[] lbNames = ctx.getBeanNamesForType(
-                    Class.forName("liquibase.integration.spring.SpringLiquibase"));
+                    Class.forName("liquibase.integration.spring.SpringLiquibase", false, ctx.getClassLoader()));
             if (lbNames.length > 0) {
                 result.put("migrationTool", "Liquibase");
                 Object liquibase = ctx.getBean(lbNames[0]);

@@ -1,6 +1,8 @@
 package com.debugagent.inspector;
 
 import com.debugagent.tool.annotation.DebugTool;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
@@ -13,6 +15,8 @@ import java.util.*;
  * Uses reflection on ApplicationModules — spring-modulith-core is optional at runtime.
  */
 public class ModulithInspector implements ApplicationContextAware {
+
+    private static final Logger log = LoggerFactory.getLogger(ModulithInspector.class);
 
     private static final String APP_MODULES_CLASS =
             "org.springframework.modulith.core.ApplicationModules";
@@ -178,44 +182,90 @@ public class ModulithInspector implements ApplicationContextAware {
     // ==================== Helpers ====================
 
     private Object resolveApplicationModules() {
-        if (!ReflectionHelper.isClassAvailable(APP_MODULES_CLASS)) return null;
+        if (!ReflectionHelper.isClassAvailable(APP_MODULES_CLASS, ctx)) return null;
 
         // Try an ApplicationModules bean first
         Object bean = ReflectionHelper.getFirstBeanOfType(ctx, APP_MODULES_CLASS);
         if (bean != null) return bean;
 
-        // Otherwise build via ApplicationModules.of(ctx)
+        // Otherwise build via ApplicationModules.of(ctx) or ApplicationModules.of(appClass)
         try {
-            Class<?> clazz = Class.forName(APP_MODULES_CLASS);
-            Method of = null;
+            Class<?> clazz = Class.forName(APP_MODULES_CLASS, false,
+                    Thread.currentThread().getContextClassLoader());
+
+            // Strategy 1: Try of(ApplicationContext)
             for (Method m : clazz.getMethods()) {
                 if ("of".equals(m.getName()) && m.getParameterCount() == 1) {
                     Class<?> param = m.getParameterTypes()[0];
-                    if (param.isAssignableFrom(ctx.getClass())
-                            || param.isAssignableFrom(ApplicationContext.class)) {
-                        of = m;
-                        break;
-                    }
+                    try {
+                        if (param.isInstance(ctx)) {
+                            return m.invoke(null, ctx);
+                        }
+                    } catch (Exception ignored) {}
                 }
             }
-            if (of == null) {
-                for (Method m : clazz.getMethods()) {
-                    if ("of".equals(m.getName()) && m.getParameterCount() == 1) {
-                        of = m;
-                        break;
+
+            // Strategy 2: Try of(Class) — pass the main application class
+            try {
+                String appName = ctx.getEnvironment().getProperty("spring.application.name");
+                // Get the main application class from the context
+                Object appBean = ctx.getBean("orderManagementApp");
+                if (appBean == null) {
+                    // Try scanning for @SpringBootApplication
+                    for (String name : ctx.getBeanDefinitionNames()) {
+                        try {
+                            Object b = ctx.getBean(name);
+                            @SuppressWarnings("unchecked")
+                            Class<? extends java.lang.annotation.Annotation> annoClass = (Class<? extends java.lang.annotation.Annotation>)
+                                    Class.forName("org.springframework.boot.autoconfigure.SpringBootApplication",
+                                            false, Thread.currentThread().getContextClassLoader());
+                            if (b.getClass().isAnnotationPresent(annoClass)) {
+                                appBean = b;
+                                break;
+                            }
+                        } catch (Exception ignored) {}
                     }
                 }
+                if (appBean != null) {
+                    for (Method m : clazz.getMethods()) {
+                        if ("of".equals(m.getName()) && m.getParameterCount() == 1
+                                && m.getParameterTypes()[0] == Class.class) {
+                            return m.invoke(null, appBean.getClass());
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            // Strategy 3: Try of(ApplicationContext) with raw invoke
+            for (Method m : clazz.getMethods()) {
+                if ("of".equals(m.getName()) && m.getParameterCount() == 1) {
+                    try {
+                        return m.invoke(null, ctx);
+                    } catch (Exception ignored) {}
+                }
             }
-            if (of == null) return null;
-            of.setAccessible(true);
-            return of.invoke(null, ctx);
-        } catch (Exception ignored) {
+
+            return null;
+        } catch (Exception e) {
+            log.warn("ApplicationModules.of() failed: {}", e.toString());
             return null;
         }
     }
 
     private Iterator<?> streamIterator(Object modules) {
         try {
+            // ApplicationModules implements Iterable — try iterator() directly first
+            if (modules instanceof Iterable<?> iter) {
+                return iter.iterator();
+            }
+            // Try iterator() method
+            Method iterMethod = findNoArgMethod(modules.getClass(), "iterator");
+            if (iterMethod != null) {
+                iterMethod.setAccessible(true);
+                Object iter = iterMethod.invoke(modules);
+                if (iter instanceof Iterator<?> i) return i;
+            }
+            // Fallback: stream().iterator()
             Method stream = findNoArgMethod(modules.getClass(), "stream");
             if (stream == null) return null;
             stream.setAccessible(true);
@@ -223,8 +273,8 @@ public class ModulithInspector implements ApplicationContextAware {
             if (streamObj == null) return null;
             Method iterator = streamObj.getClass().getMethod("iterator");
             iterator.setAccessible(true);
-            Object iter = iterator.invoke(streamObj);
-            if (iter instanceof Iterator<?> i) return i;
+            Object iter2 = iterator.invoke(streamObj);
+            if (iter2 instanceof Iterator<?> i) return i;
         } catch (Exception ignored) {}
         return null;
     }

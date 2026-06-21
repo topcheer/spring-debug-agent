@@ -264,7 +264,7 @@ public class RocketMqInspector implements ApplicationContextAware {
         try {
             var beans = ctx.getBeansWithAnnotation(
                     (Class<? extends java.lang.annotation.Annotation>)
-                            (Class<?>) Class.forName("org.apache.rocketmq.spring.annotation.RocketMQTransactionListener"));
+                            (Class<?>) Class.forName("org.apache.rocketmq.spring.annotation.RocketMQTransactionListener", false, ctx.getClassLoader()));
             if (!beans.isEmpty()) {
                 List<String> txListeners = new ArrayList<>();
                 for (var entry : beans.entrySet()) {

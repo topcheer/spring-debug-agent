@@ -169,7 +169,7 @@ public class KerberosInspector implements ApplicationContextAware {
 
         // Use klist equivalent — parse keytab via sun.security classes
         try {
-            Class<?> keyTabClass = Class.forName("sun.security.krb5.internal.ktab.KeyTab");
+            Class<?> keyTabClass = Class.forName("sun.security.krb5.internal.ktab.KeyTab", false, ctx.getClassLoader());
             Method create = keyTabClass.getMethod("getInstance", String.class);
             Object keyTab = create.invoke(null, path);
 
