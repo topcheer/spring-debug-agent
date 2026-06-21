@@ -2,7 +2,7 @@
 
 An AI-powered debugging agent that **embeds directly into your Spring Boot application**. Add one dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
 
-> **176+ diagnostic tools** across **53 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
+> **226+ diagnostic tools** across **64 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
 
 ## Why?
 
@@ -38,7 +38,7 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 <dependency>
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.7.0</version>
+    <version>0.8.0</version>
 </dependency>
 ```
 
@@ -72,7 +72,7 @@ That's it. The agent auto-configures via Spring Boot Starter — no code changes
 ### Gradle
 
 ```groovy
-implementation 'dev.ggcode:spring-debug-agent:0.7.0'
+implementation 'dev.ggcode:spring-debug-agent:0.8.0'
 ```
 
 ## Supported LLM Providers
@@ -514,6 +514,111 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | `test_kerberos_login` | Test Kerberos login — attempt TGT acquisition, report credentials and detailed errors |
 | `get_kerberos_security_config` | Spring Security Kerberos/SPNEGO beans: ticket validator, auth provider, SPNEGO filter |
 | `get_kerberos_environment` | Kerberos environment: krb5.conf, realm/KDC settings, system properties, ticket cache |
+
+### MyBatis (`MyBatisInspector` — 5 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_mybatis_configuration` | MyBatis global config: cacheEnabled, lazyLoading, mapUnderscoreToCamelCase, executor type |
+| `get_mybatis_mappers` | All mapped statements: SQL ID, command type, XML resource, key generator |
+| `get_mybatis_interceptors` | Interceptor (plugin) chain: class, @Intercepts signatures, ordering |
+| `get_mybatis_sql_session_info` | SqlSessionFactory/Template config: data source, transaction factory, mapper count |
+| `get_mybatis_cache_config` | Second-level cache: namespace, cache impl, eviction strategy, size |
+
+### Apache Camel (`CamelInspector` — 5 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_camel_routes` | All Camel routes: ID, status, endpoint URI, uptime |
+| `get_camel_route_stats` | Route performance: exchanges completed/failed, min/mean/max RT, inflight |
+| `get_camel_endpoints` | All registered endpoints: URI, singleton status |
+| `get_camel_consumers` | Consumer status: inflight exchanges, suspended/stopped state |
+| `get_camel_context_info` | Camel context summary: name, version, uptime, components, shutdown strategy |
+
+### RabbitMQ / AMQP (`AmqpInspector` — 5 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_amqp_queues` | Queue names from RabbitAdmin |
+| `get_amqp_consumers` | Listener containers: queues, concurrent consumers, prefetch, acknowledge mode |
+| `get_amqp_connection_info` | CachingConnectionFactory: host, port, vhost, channel cache, cache properties |
+| `get_amqp_exchanges` | Exchange topology: name, type (direct/fanout/topic/headers), durable, auto-delete |
+| `get_amqp_template_info` | RabbitTemplate: default exchange, routing key, confirm/returns callback, converter |
+
+### Apache Dubbo (`DubboInspector` — 5 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_dubbo_services` | Service providers: interface, group, version, protocol, port, registries, timeout |
+| `get_dubbo_references` | Consumer references: interface, load balance, timeout, retries, cluster, URL |
+| `get_dubbo_application_config` | App config: name, registry addresses, protocol, QoS port, serialization |
+| `get_dubbo_thread_pool` | Thread pool: max/core/io threads, queue capacity, active count, completed tasks |
+| `get_dubbo_registry_status` | Registry: address, protocol, register/subscribe enabled, check, timeout |
+
+### RocketMQ (`RocketMqInspector` — 5 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_rocket_mq_producer_info` | Producer: group, name server, send timeout, retry, max message size |
+| `get_rocket_mq_consumers` | Consumers: group, topic, consume mode (concurrently/orderly), message model, threads |
+| `get_rocket_mq_subscriptions` | Subscription table: topic to tag/expression mapping |
+| `get_rocket_mq_server_info` | Name server connectivity, client ID, broker discovery |
+| `get_rocket_mq_transaction_info` | Transaction producer, transaction listeners, check config |
+
+### Alibaba Nacos (`NacosInspector` — 5 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_nacos_services` | Registered services with instances: IP, port, healthy, weight, cluster, metadata |
+| `get_nacos_config` | Configuration by dataId/group: raw content from Nacos config server |
+| `get_nacos_namespaces` | Namespace list: ID, name, config count |
+| `get_nacos_health` | Server connectivity: naming/config server status, Spring properties |
+| `get_nacos_config_listeners` | Config change listeners: watched dataIds, cached content, MD5 |
+
+### Alibaba Sentinel (`SentinelInspector` — 4 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_sentinel_flow_rules` | Flow control rules: resource, grade (QPS/thread), threshold, control behavior |
+| `get_sentinel_degrade_rules` | Circuit breaker rules: strategy (RT/exception), threshold, time window, min requests |
+| `get_sentinel_metrics` | Real-time metrics: pass/block/success/exception QPS, RT, thread count |
+| `get_sentinel_datasources` | Datasource config: rules loaded from Nacos/Apollo/ZK/file |
+
+### Seata (`SeataInspector` — 4 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_seata_global_config` | Global TX config: app ID, tx-service-group, data source proxy mode, XID |
+| `get_seata_rm_config` | RM config: async commit buffer, retry, undo log table, serialization |
+| `get_seata_tm_config` | TM config: commit/rollback retry, default timeout, interceptor |
+| `get_seata_tc_status` | TC connectivity: TM/RM clients, registry type, server address, transport |
+
+### Flowable BPM (`FlowableInspector` — 4 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_flowable_process_definitions` | Deployed process definitions: key, name, version, suspended, resource name |
+| `get_flowable_active_instances` | Active process instances: ID, definition, business key, start time |
+| `get_flowable_tasks` | Active user tasks: name, assignee, creation time, priority, due date |
+| `get_flowable_engine_config` | Engine config: DB type, schema update, history level, async executor, counts |
+
+### Cassandra (`CassandraInspector` — 4 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_cassandra_cluster_info` | Cluster topology: nodes, datacenter, rack, state, open connections |
+| `get_cassandra_keyspaces` | Keyspaces: replication strategy, durable writes, table/type count |
+| `get_cassandra_session_stats` | Session metrics: prepared statements, consistency, page size, pool config |
+| `test_cassandra_query` | Execute CQL query (SELECT/DESCRIBE) — returns columns and rows |
+
+### Zookeeper (`ZookeeperInspector` — 4 tools)  *v0.8.0*
+
+| Tool | Description |
+|------|-------------|
+| `get_zk_children` | List ZNode children at path: names, full paths |
+| `get_zk_node` | ZNode details: data (string/hex), stat (version, ctime, mtime, ephemeral owner) |
+| `get_zk_watchers` | Registered watchers: data/child/exist watcher paths, session info, Curator listeners |
+| `get_zk_cluster_status` | Cluster status: connection state, session ID/timeout, server address, ensemble info |
 
 ### Classloading & System (3 tools)
 
