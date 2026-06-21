@@ -90,7 +90,7 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 
 ---
 
-## Diagnostic Tools (141+ total)
+## Diagnostic Tools (226+ total)
 
 ### JVM Diagnostics (`JvmInspector` — 16 tools)
 
@@ -645,7 +645,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 │  │  └──────────┘     └────┬─────┘     └─────────────┘     │ │
 │  │                         │                                │ │
 │  │    ┌────────────────────┼────────────────────────┐      │ │
-│  │    │        50 Inspectors (141+ tools)           │      │ │
+│  │    │        64 Inspectors (226+ tools)           │      │ │
 │  │    │                    │                        │      │ │
 │  │  ┌─▼──┐ ┌────┐ ┌──────┐ ┌─────┐ ┌─────┐ ┌─────┐ │      │ │
 │  │  │JVM │ │Spng│ │Watch │ │ JMX │ │Reqs │ │Metrc│ │      │ │
@@ -678,7 +678,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | Decision | Rationale |
 |----------|-----------|
 | **Embedded** (not external attach) | Zero friction — works in any IDE, no JVM attach permissions |
-| **141+ tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
+| **226+ tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
 | **Custom HTTP client** (not Spring AI) | Minimal dependencies, works with any OpenAI-compatible endpoint |
 | **ByteBuddy** (not JDI) | Runtime bytecode enhancement, no separate agent process |
 | **Self-contained UI** (no CDN) | Works in enterprise environments with no internet access |
@@ -704,7 +704,7 @@ spring-debug-agent/
 │       │   ├── annotation/          # @DebugTool, @ToolParam
 │       │   ├── ToolRegistry.java    # Discovers and registers tools
 │       │   └── ToolExecutor.java    # Invokes tools, marshals args
-│       ├── inspector/               # 50 diagnostic inspectors (141+ tools)
+│       ├── inspector/               # 64 diagnostic inspectors (226+ tools)
 │       │   ├── JvmInspector.java        # Threads, memory, GC, heap, process info
 │       │   ├── SpringInspector.java      # Beans, config, annotations, methods
 │       │   ├── MBeanInspector.java       # JMX MBean browsing
@@ -724,6 +724,13 @@ spring-debug-agent/
 ├── demo/                            # Demo app (Order Management System)
 │   └── ...
 │
+├── docker/                           # Docker infrastructure for demo
+│   └── kdc/                          # MIT Kerberos KDC (Dockerfile, init script, keytab output)
+│       ├── Dockerfile                # Ubuntu 22.04 + krb5-kdc
+│       ├── init-kdc.sh               # Auto-creates realm, principals, exports keytab
+│       └── keytabs/                  # Generated keytab (demo.keytab) and krb5.conf
+│
+├── docker-compose.yml                # All 13 external dependencies (single file)
 ├── e2e-tests/                       # End-to-end test suite (80 tools)
 │   ├── fast-e2e-test.js             # Fast batch test runner (original 55 tools)
 │   ├── new-tools-test.js            # v0.4.0 new tools test (25 tools)
@@ -755,20 +762,85 @@ The `demo` module is an **Order Management System** with realistic complexity:
 - **Actuator endpoints** for health checks
 - **REST API** for order CRUD operations
 
+#### External Infrastructure (Docker)
+
+The demo integrates with **13 Docker services** covering all inspectors. All services are defined in a single `docker-compose.yml`:
+
+| Service | Port(s) | Inspector Coverage |
+|---------|---------|-------------------|
+| Redis | 6379 | `RedisInspector` |
+| MongoDB | 27017 | `MongoDbInspector` |
+| Elasticsearch | 9200 | `ElasticsearchInspector` |
+| Redpanda (Kafka) | 9092 | `MessagingInspector` |
+| Vault | 8200 | `VaultInspector` |
+| MinIO | 9000, 9001 | `ObjectStorageInspector` |
+| RocketMQ NameServer + Broker | 9876, 10911 | `RocketMqInspector` |
+| Nacos | 8848, 9848 | `NacosInspector`, `CloudInspector` |
+| RabbitMQ | 5672, 15672 | `AmqpInspector` |
+| Cassandra | 9042 | `CassandraInspector` |
+| Seata TC Server | 8091, 7091 | `SeataInspector` |
+| MIT Kerberos KDC | 88, 749 | `KerberosInspector` |
+| Zookeeper | 2181 | `ZookeeperInspector` |
+
+```bash
+# Start all external dependencies
+docker compose up -d
+
+# Verify all services are running
+docker compose ps
+```
+
+> All services are **fail-safe** — the demo starts successfully even if some containers are down. Inspectors simply report `not_configured` or `unavailable` for missing services.
+
+#### Kerberos KDC Setup
+
+The Kerberos inspector requires a running KDC and keytab file. The Docker KDC container (`demo-kdc`) auto-provisions everything:
+
+- **Realm**: `DEMO.LOCAL`
+- **Principals**: `HTTP/localhost@DEMO.LOCAL`, `demo-user@DEMO.LOCAL`, `demo-admin@DEMO.LOCAL`
+- **Keytab output**: `docker/kdc/keytabs/demo.keytab`
+
+```bash
+# Start the KDC (also started by `docker compose up -d`)
+docker compose up -d kdc
+
+# Verify the keytab was generated
+klist -kt docker/kdc/keytabs/demo.keytab
+```
+
+When starting the demo with Kerberos enabled, you must pass JVM flags to open the `java.security.jgss` module for keytab inspection:
+
+```bash
+java \
+  --add-opens java.security.jgss/sun.security.krb5.internal.ktab=ALL-UNNAMED \
+  --add-opens java.security.jgss/sun.security.krb5=ALL-UNNAMED \
+  -Djava.security.krb5.conf=demo/src/main/resources/krb5.conf \
+  -jar demo/target/spring-debug-agent-demo-0.1.0-SNAPSHOT.jar
+```
+
+Without these flags, `inspect_keytab` will fail with `IllegalAccessException` (module access restriction in Java 17+). All other Kerberos tools work without the flags.
+
 ### Run the demo
 
 ```bash
 cd spring-debug-agent
 
-# Build
+# 1. Start external dependencies (Redis, MongoDB, Kafka, Vault, MinIO, etc.)
+docker compose up -d
+
+# 2. Build
 mvn clean install -pl agent -DskipTests
 mvn package -pl demo -DskipTests
 
-# Run with an LLM provider (example: ZhipuAI GLM-4.6)
+# 3. Run with an LLM provider (example: ZhipuAI GLM-4.6)
+#    Include Kerberos JVM flags for full inspector coverage
 java \
   -Ddebug-agent.llm.base-url=https://open.bigmodel.cn/api/paas/v4 \
   -Ddebug-agent.llm.api-key=YOUR_API_KEY \
   -Ddebug-agent.llm.model=glm-4.6 \
+  --add-opens java.security.jgss/sun.security.krb5.internal.ktab=ALL-UNNAMED \
+  --add-opens java.security.jgss/sun.security.krb5=ALL-UNNAMED \
+  -Djava.security.krb5.conf=demo/src/main/resources/krb5.conf \
   -jar demo/target/spring-debug-agent-demo-0.1.0-SNAPSHOT.jar
 ```
 
@@ -794,10 +866,19 @@ Then open `http://localhost:8080/agent` and try asking:
 - "Check all circuit breakers and retry stats"
 - "Profile CPU hotspots for 3 seconds"
 - "Show me the database migration history and pending migrations"
+- "Show me the Kerberos security config — ticket validator, SPNEGO filter, authentication provider"
+- "Inspect the keytab file and list all principals and encryption types"
+- "Check the RabbitMQ queues, consumers, and exchange topology"
+- "Show me the RocketMQ producer and consumer info"
+- "List all Nacos registered services and configuration"
+- "Check the Cassandra cluster topology and keyspaces"
+- "Show me the Seata global transaction config and TC server status"
+- "Check the Zookeeper cluster status and registered watchers"
+- "Show me the Camel routes and their performance stats"
 
 ### E2E Test Suite
 
-All 141+ tools are covered by automated E2E tests:
+All 226+ tools are covered by automated E2E tests:
 
 ```bash
 # 1. Generate test data (orders, HTTP traffic, logs, cache)
