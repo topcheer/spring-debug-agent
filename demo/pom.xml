@@ -35,7 +35,7 @@
         <dependency>
             <groupId>dev.ggcode</groupId>
             <artifactId>spring-debug-agent</artifactId>
-            <version>0.7.0</version>
+            <version>0.8.0</version>
         </dependency>
 
         <!-- Spring Boot Starters -->
@@ -250,6 +250,97 @@
             <groupId>org.springframework.security.kerberos</groupId>
             <artifactId>spring-security-kerberos-client</artifactId>
             <version>2.1.1</version>
+        </dependency>
+
+        <!-- v0.8.0: MyBatis — for MyBatisInspector demo -->
+        <dependency>
+            <groupId>org.mybatis.spring.boot</groupId>
+            <artifactId>mybatis-spring-boot-starter</artifactId>
+            <version>3.0.4</version>
+        </dependency>
+
+        <!-- v0.8.0: Apache Camel — for CamelInspector demo -->
+        <dependency>
+            <groupId>org.apache.camel.springboot</groupId>
+            <artifactId>camel-spring-boot-starter</artifactId>
+            <version>4.10.0</version>
+        </dependency>
+
+        <!-- v0.8.0: RabbitMQ / AMQP — for AmqpInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
+        <!-- v0.8.0: Apache Dubbo — for DubboInspector demo -->
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-spring-boot-starter</artifactId>
+            <version>3.3.4</version>
+        </dependency>
+
+        <!-- v0.8.0: RocketMQ — for RocketMqInspector demo -->
+        <dependency>
+            <groupId>org.apache.rocketmq</groupId>
+            <artifactId>rocketmq-spring-boot-starter</artifactId>
+            <version>2.3.3</version>
+        </dependency>
+
+        <!-- v0.8.0: Nacos — for NacosInspector demo -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-nacos-discovery</artifactId>
+            <version>2023.0.3.2</version>
+            <exclusions>
+                <exclusion>
+                    <groupId>org.springframework.cloud</groupId>
+                    <artifactId>spring-cloud-starter</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- v0.8.0: Sentinel — for SentinelInspector demo -->
+        <dependency>
+            <groupId>com.alibaba.cloud</groupId>
+            <artifactId>spring-cloud-starter-alibaba-sentinel</artifactId>
+            <version>2023.0.3.2</version>
+        </dependency>
+
+        <!-- v0.8.0: Seata — for SeataInspector demo -->
+        <dependency>
+            <groupId>io.seata</groupId>
+            <artifactId>seata-spring-boot-starter</artifactId>
+            <version>2.0.0</version>
+        </dependency>
+
+        <!-- v0.8.0: Flowable BPM — for FlowableInspector demo -->
+        <dependency>
+            <groupId>org.flowable</groupId>
+            <artifactId>flowable-spring-boot-starter</artifactId>
+            <version>7.1.0</version>
+        </dependency>
+
+        <!-- v0.8.0: Cassandra — for CassandraInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-data-cassandra</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>com.typesafe</groupId>
+            <artifactId>config</artifactId>
+            <version>1.4.3</version>
+        </dependency>
+
+        <!-- v0.8.0: Zookeeper / Curator — for ZookeeperInspector demo -->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-framework</artifactId>
+            <version>5.7.1</version>
+        </dependency>
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-recipes</artifactId>
+            <version>5.7.1</version>
         </dependency>
     </dependencies>
 

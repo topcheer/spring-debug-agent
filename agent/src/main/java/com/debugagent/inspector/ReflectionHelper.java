@@ -74,6 +74,36 @@ public final class ReflectionHelper {
     }
 
     /**
+     * Safely invoke a method by name with arguments on an object.
+     * Args are matched by count — the first method with the right name and parameter count is used.
+     */
+    public static Object invokeMethod(Object target, String methodName, Object... args) {
+        if (target == null) return null;
+        try {
+            for (Method m : target.getClass().getMethods()) {
+                if (m.getName().equals(methodName) && m.getParameterCount() == args.length) {
+                    m.setAccessible(true);
+                    return m.invoke(target, args);
+                }
+            }
+            // Also search declared methods (including non-public)
+            Class<?> current = target.getClass();
+            while (current != null) {
+                for (Method m : current.getDeclaredMethods()) {
+                    if (m.getName().equals(methodName) && m.getParameterCount() == args.length) {
+                        m.setAccessible(true);
+                        return m.invoke(target, args);
+                    }
+                }
+                current = current.getSuperclass();
+            }
+        } catch (Exception e) {
+            log.debug("Failed to invoke '{}' on {}: {}", methodName, target.getClass().getSimpleName(), e.getMessage());
+        }
+        return null;
+    }
+
+    /**
      * Find a method by name in the class hierarchy.
      */
     public static Method findMethod(Class<?> clazz, String methodName, Class<?>... paramTypes) {

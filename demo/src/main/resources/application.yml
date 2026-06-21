@@ -1,6 +1,11 @@
 spring:
   main:
     allow-bean-definition-overriding: true
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.cassandra.CassandraReactiveDataAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration
   application:
     name: order-management-demo
 
@@ -156,3 +161,91 @@ minio:
   endpoint: http://localhost:9000
   access-key: minioadmin
   secret-key: minioadmin
+
+# ============================================================
+# v0.8.0 Framework configurations (fail-safe — external services optional)
+# ============================================================
+
+# MyBatis (works with H2)
+mybatis:
+  mapper-locations: classpath:mapper/*.xml
+  configuration:
+    map-underscore-to-camel-case: true
+    cache-enabled: true
+
+# RabbitMQ (fail-safe: won't crash if broker unavailable)
+spring.rabbitmq:
+  host: localhost
+  port: 5672
+  username: guest
+  password: guest
+  listener:
+    simple:
+      acknowledge-mode: auto
+      concurrency: 1
+      max-concurrency: 3
+
+# Dubbo (N/A registry = no external registry needed)
+dubbo:
+  application:
+    name: order-management-demo
+  registry:
+    address: N/A
+  protocol:
+    name: dubbo
+    port: 20880
+
+# RocketMQ (fail-safe: won't crash if NameServer unavailable)
+rocketmq:
+  name-server: localhost:9876
+  producer:
+    group: demo-producer-group
+    send-message-timeout: 3000
+
+# Nacos (fail-safe: won't crash if server unavailable)
+spring.cloud.nacos:
+  discovery:
+    server-addr: localhost:8848
+    register-enabled: false
+  config:
+    server-addr: localhost:8848
+    import-check.enabled: false
+
+# Sentinel (works standalone, no server needed for rules)
+spring.cloud.sentinel:
+  transport:
+    dashboard: localhost:8858
+  eager: true
+
+# Seata (file mode — no TC server needed for config inspection)
+seata:
+  enabled: true
+  application-id: order-management-demo
+  tx-service-group: demo-tx-group
+  service:
+    vgroup-mapping:
+      demo-tx-group: default
+    grouplist:
+      default: localhost:8091
+  registry:
+    type: file
+  config:
+    type: file
+
+# Flowable (works with H2)
+flowable:
+  database-schema-update: true
+  history-level: full
+  async-executor-activate: false
+
+# Cassandra (fail-safe: won't crash if cluster unavailable)
+spring.cassandra:
+  contact-points: localhost
+  port: 9042
+  local-datacenter: datacenter1
+  keyspace-name: demo
+
+# Zookeeper / Curator (fail-safe)
+curator:
+  connect-string: localhost:2181
+  session-timeout-ms: 30000

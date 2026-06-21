@@ -366,6 +366,80 @@ public class DebugAgentAutoConfiguration {
         return new KerberosInspector();
     }
 
+    // v0.8.0 Enterprise Integration Frameworks - Tier 1
+    @Bean
+    @ConditionalOnClass(name = "org.mybatis.spring.SqlSessionFactoryBean")
+    public MyBatisInspector myBatisInspector() {
+        return new MyBatisInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.apache.camel.CamelContext")
+    public CamelInspector camelInspector() {
+        return new CamelInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.amqp.rabbit.core.RabbitAdmin")
+    public AmqpInspector amqpInspector() {
+        return new AmqpInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.apache.dubbo.config.spring.ServiceBean")
+    public DubboInspector dubboInspector() {
+        return new DubboInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.apache.rocketmq.spring.core.RocketMQTemplate")
+    public RocketMqInspector rocketMqInspector() {
+        return new RocketMqInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "com.alibaba.nacos.api.naming.NamingService")
+    public NacosInspector nacosInspector() {
+        return new NacosInspector();
+    }
+
+    // v0.8.0 Enterprise Integration Frameworks - Tier 2
+    @Bean
+    @ConditionalOnClass(name = "com.alibaba.csp.sentinel.Sph")
+    public SentinelInspector sentinelInspector() {
+        return new SentinelInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "io.seata.spring.annotation.GlobalTransactionScanner")
+    public SeataInspector seataInspector() {
+        return new SeataInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.cloud.gateway.route.RouteDefinitionLocator")
+    public GatewayInspector gatewayInspector() {
+        return new GatewayInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.flowable.engine.ProcessEngine")
+    public FlowableInspector flowableInspector() {
+        return new FlowableInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "com.datastax.oss.driver.api.core.CqlSession")
+    public CassandraInspector cassandraInspector() {
+        return new CassandraInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.apache.curator.framework.CuratorFramework")
+    public ZookeeperInspector zookeeperInspector() {
+        return new ZookeeperInspector();
+    }
+
     @Bean
     public OpenApiInspector openApiInspector() {
         return new OpenApiInspector();
@@ -458,6 +532,20 @@ public class DebugAgentAutoConfiguration {
         addIfExists(ctx, TlsInspector.class, inspectors);
         addIfExists(ctx, LdapInspector.class, inspectors);
         addIfExists(ctx, KerberosInspector.class, inspectors);
+        // v0.8.0 Tier 1
+        addIfExists(ctx, MyBatisInspector.class, inspectors);
+        addIfExists(ctx, CamelInspector.class, inspectors);
+        addIfExists(ctx, AmqpInspector.class, inspectors);
+        addIfExists(ctx, DubboInspector.class, inspectors);
+        addIfExists(ctx, RocketMqInspector.class, inspectors);
+        addIfExists(ctx, NacosInspector.class, inspectors);
+        // v0.8.0 Tier 2
+        addIfExists(ctx, SentinelInspector.class, inspectors);
+        addIfExists(ctx, SeataInspector.class, inspectors);
+        addIfExists(ctx, GatewayInspector.class, inspectors);
+        addIfExists(ctx, FlowableInspector.class, inspectors);
+        addIfExists(ctx, CassandraInspector.class, inspectors);
+        addIfExists(ctx, ZookeeperInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {
