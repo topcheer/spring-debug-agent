@@ -418,10 +418,32 @@ async function section17_monitoring(page) {
   await pause(page, 5000);
 }
 
-// ─── Section 18: Logs + Environment + Classloading + WatchPoints ─────────
+// ─── Section 18: AOP + OpenFeign + System Control [v0.8.1] ──────────────
 
-async function section18_system(page) {
-  console.log('  [18/18] Logs + Environment + Classloading + WatchPoints');
+async function section18_aop_feign(page) {
+  console.log('  [18/19] AOP + OpenFeign + System Control');
+
+  await typeMessage(page, 'Show me all AOP aspects in this app. What advice types are configured and what are their pointcut expressions?');
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, 'Which beans are AOP proxies? Also show me the detailed AOP advice info grouped by type — @Before, @Around, @AfterReturning.');
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, 'List all Feign clients with their target URLs and fallback classes. Also show the Feign client configuration — timeouts, logger level.');
+  await sendAndWait(page);
+  await pause(page, 4000);
+
+  await typeMessage(page, 'Capture a thread dump of all running threads. Also trigger a heap dump to a temp file and show me the file path.');
+  await sendAndWait(page);
+  await pause(page, 5000);
+}
+
+// ─── Section 19: Logs + Environment + Classloading + WatchPoints ─────────
+
+async function section19_system(page) {
+  console.log('  [19/19] Logs + Environment + Classloading + WatchPoints');
 
   await typeMessage(page, 'Show me recent warning and error logs. How many classes has the app loaded? Also show the HttpClient connection pool stats.');
   await sendAndWait(page);
@@ -442,8 +464,8 @@ async function section18_system(page) {
   fs.mkdirSync(OUTPUT_DIR, { recursive: true });
 
   console.log('\n======================================================');
-  console.log('  Spring Debug Agent v0.8.0 — Full Demo Recording');
-  console.log('  226 tools / 64 inspectors / 18 sections');
+  console.log('  Spring Debug Agent v0.8.1 — Full Demo Recording');
+  console.log('  246 tools / 66 inspectors / 19 sections');
   console.log('  Natural language prompts (no tool names exposed)');
   console.log('  Target: ' + BASE_URL + '/agent');
   console.log('======================================================\n');
@@ -481,7 +503,8 @@ async function section18_system(page) {
     { name: '15-seata-tracing-camel-sm',   fn: section15_distributed },
     { name: '16-vault-storage-distcache',   fn: section16_infra },
     { name: '17-metrics-events-health',     fn: section17_monitoring },
-    { name: '18-logs-env-classload-wp',     fn: section18_system },
+    { name: '18-aop-feign-sysctl',           fn: section18_aop_feign },
+    { name: '19-logs-env-classload-wp',       fn: section19_system },
   ];
 
   const startTime = Date.now();

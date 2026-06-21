@@ -359,6 +359,19 @@
             <artifactId>curator-x-discovery</artifactId>
             <version>5.7.1</version>
         </dependency>
+
+        <!-- v0.8.1: Spring AOP — for AopInspector demo -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-aop</artifactId>
+        </dependency>
+
+        <!-- v0.8.1: Spring Cloud OpenFeign — for OpenFeignInspector demo -->
+        <dependency>
+            <groupId>org.springframework.cloud</groupId>
+            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <version>4.1.4</version>
+        </dependency>
     </dependencies>
 
     <!-- ============================================================ -->

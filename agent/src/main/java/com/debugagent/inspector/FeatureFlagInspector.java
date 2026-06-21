@@ -1,6 +1,7 @@
 package com.debugagent.inspector;
 
 import com.debugagent.tool.annotation.DebugTool;
+import com.debugagent.tool.annotation.ToolParam;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
@@ -140,5 +141,92 @@ public class FeatureFlagInspector implements ApplicationContextAware {
             return null;
         }
         return null;
+    }
+
+    @DebugTool(description = "Search auto-configuration classes by keyword. Returns match status, reasons, "
+            + "and conditions. Useful for finding why a specific auto-configuration was enabled or disabled.")
+    public Map<String, Object> searchAutoConfigurations(
+            @ToolParam(description = "Keyword to search (e.g. 'Redis', 'Kafka', 'Security')") String keyword
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        try {
+            Object report = getConditionEvaluationReport();
+            if (report == null) {
+                result.put("info", "ConditionEvaluationReport not available");
+                return result;
+            }
+
+            String lowerKeyword = keyword.toLowerCase();
+            List<Map<String, Object>> matched = new ArrayList<>();
+
+            // Search positive matches
+            Object positiveMatches = ReflectionHelper.invokeMethod(report, "getPositiveMatches");
+            if (positiveMatches instanceof Map<?, ?> pm) {
+                for (Map.Entry<?, ?> entry : pm.entrySet()) {
+                    String className = entry.getKey().toString();
+                    if (className.toLowerCase().contains(lowerKeyword)) {
+                        Map<String, Object> m = new LinkedHashMap<>();
+                        m.put("className", className);
+                        m.put("status", "MATCHED");
+                        Object outcomes = entry.getValue();
+                        if (outcomes instanceof List<?> list) {
+                            List<String> reasons = new ArrayList<>();
+                            for (Object o : list) {
+                                Object outcome = ReflectionHelper.invokeMethod(o, "getOutcome");
+                                Object condition = ReflectionHelper.invokeMethod(o, "getCondition");
+                                reasons.add((condition != null ? condition.toString() : "?")
+                                        + ": " + (outcome != null ? outcome.toString() : "matched"));
+                            }
+                            m.put("conditions", reasons);
+                        }
+                        matched.add(m);
+                    }
+                }
+            }
+
+            // Search condition outcomes for unmatched
+            try {
+                Object conditionOutcomes = ReflectionHelper.invokeMethod(report, "getConditionAndOutcomesBySource");
+                if (conditionOutcomes instanceof Map<?, ?> coMap) {
+                    for (Map.Entry<?, ?> entry : coMap.entrySet()) {
+                        String source = entry.getKey().toString();
+                        if (source.toLowerCase().contains(lowerKeyword)) {
+                            Object outcomes = entry.getValue();
+                            if (outcomes != null) {
+                                Object isFullMatch = ReflectionHelper.invokeMethod(outcomes, "isFullMatch");
+                                if (Boolean.FALSE.equals(isFullMatch)) {
+                                    Map<String, Object> m = new LinkedHashMap<>();
+                                    m.put("className", source);
+                                    m.put("status", "NOT_MATCHED");
+                                    Object fullOutcomes = ReflectionHelper.invokeMethod(outcomes, "getConditionAndOutcomes");
+                                    if (fullOutcomes instanceof List<?> list) {
+                                        List<String> reasons = new ArrayList<>();
+                                        for (Object o : list) {
+                                            Object outcome = ReflectionHelper.invokeMethod(o, "getOutcome");
+                                            Object condition = ReflectionHelper.invokeMethod(o, "getCondition");
+                                            if (outcome != null) {
+                                                reasons.add(condition + ": " + outcome);
+                                            }
+                                        }
+                                        if (!reasons.isEmpty()) m.put("reasons", reasons);
+                                    }
+                                    matched.add(m);
+                                }
+                            }
+                        }
+                    }
+                }
+            } catch (Exception ignored) {}
+
+            result.put("keyword", keyword);
+            result.put("matchCount", matched.size());
+            result.put("matches", matched);
+
+        } catch (Exception e) {
+            result.put("error", "Failed to search: " + e.getMessage());
+        }
+
+        return result;
     }
 }

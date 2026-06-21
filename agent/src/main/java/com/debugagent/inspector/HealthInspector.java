@@ -74,4 +74,67 @@ public class HealthInspector implements ApplicationContextAware {
 
         return result;
     }
+
+    @DebugTool(description = "Deep-dive into a specific health component (e.g. 'db', 'redis', 'disk'). "
+            + "Returns full details for one component rather than the overview.")
+    public Map<String, Object> getHealthComponentDetail(
+            @ToolParam(description = "Component name to inspect (e.g. 'db', 'redis', 'ping')") String componentName
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        try {
+            Object healthEndpoint = ReflectionHelper.getFirstBeanOfType(ctx,
+                    "org.springframework.boot.actuate.health.HealthEndpoint");
+            if (healthEndpoint == null) {
+                result.put("error", "Spring Boot Actuator HealthEndpoint not found");
+                return result;
+            }
+
+            // Call healthForPath(componentName) — Spring Boot 2.x/3.x
+            Object healthResult = null;
+            try {
+                java.lang.reflect.Method healthForPath = healthEndpoint.getClass()
+                        .getMethod("healthForPath", String[].class);
+                healthResult = healthForPath.invoke(healthEndpoint, new Object[]{new String[]{componentName}});
+            } catch (NoSuchMethodException e) {
+                // Fall back to health() and extract component
+                healthResult = ReflectionHelper.invokeMethod(healthEndpoint, "health");
+                if (healthResult != null) {
+                    Object details = ReflectionHelper.invokeMethod(healthResult, "getDetails");
+                    if (details instanceof Map<?, ?> detailMap) {
+                        Object comp = detailMap.get(componentName);
+                        if (comp != null) {
+                            healthResult = comp;
+                        } else {
+                            result.put("error", "Component not found: " + componentName);
+                            result.put("availableComponents", detailMap.keySet());
+                            return result;
+                        }
+                    }
+                }
+            }
+
+            if (healthResult == null) {
+                result.put("error", "No health result for component: " + componentName);
+                return result;
+            }
+
+            Object status = ReflectionHelper.invokeMethod(healthResult, "getStatus");
+            result.put("component", componentName);
+            result.put("status", status != null ? status.toString() : "UNKNOWN");
+
+            Object details = ReflectionHelper.invokeMethod(healthResult, "getDetails");
+            if (details instanceof Map<?, ?> detailMap) {
+                Map<String, Object> d = new LinkedHashMap<>();
+                for (Map.Entry<?, ?> entry : detailMap.entrySet()) {
+                    d.put(entry.getKey().toString(), ReflectionHelper.safeToString(entry.getValue()));
+                }
+                result.put("details", d);
+            }
+        } catch (Exception e) {
+            result.put("error", "Failed to get health component: " + e.getMessage());
+        }
+
+        return result;
+    }
 }

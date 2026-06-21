@@ -441,6 +441,18 @@ public class DebugAgentAutoConfiguration {
     }
 
     @Bean
+    @ConditionalOnClass(name = "org.aspectj.lang.annotation.Aspect")
+    public AopInspector aopInspector() {
+        return new AopInspector();
+    }
+
+    @Bean
+    @ConditionalOnClass(name = "org.springframework.cloud.openfeign.FeignClient")
+    public OpenFeignInspector openFeignInspector() {
+        return new OpenFeignInspector();
+    }
+
+    @Bean
     public OpenApiInspector openApiInspector() {
         return new OpenApiInspector();
     }
@@ -546,6 +558,9 @@ public class DebugAgentAutoConfiguration {
         addIfExists(ctx, FlowableInspector.class, inspectors);
         addIfExists(ctx, CassandraInspector.class, inspectors);
         addIfExists(ctx, ZookeeperInspector.class, inspectors);
+        // v0.8.1 Enhanced
+        addIfExists(ctx, AopInspector.class, inspectors);
+        addIfExists(ctx, OpenFeignInspector.class, inspectors);
 
         ToolRegistry registry = new ToolRegistry();
         for (Object inspector : inspectors) {

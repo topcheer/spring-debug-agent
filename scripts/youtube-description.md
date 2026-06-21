@@ -20,9 +20,9 @@ Spring Debug Agent is an open-source debugging companion for Spring Boot 3.x / J
 
 No external agents. No sidecar processes. No code changes. Just chat with your app at /agent and ask questions in plain English.
 
-Maven Central: dev.ggcode : spring-debug-agent : 0.8.0
+Maven Central: dev.ggcode : spring-debug-agent : 0.8.1
 
-In this 60-minute demo, the LLM receives only natural-language questions and must autonomously decide which of 226 tools to call, analyze results, and provide actionable recommendations.
+In this 65-minute demo, the LLM receives only natural-language questions and must autonomously decide which of 246 tools to call, analyze results, and provide actionable recommendations.
 
 The demo runs against a live Spring Boot app connected to 13 Docker services: Redis, MongoDB, Elasticsearch, Redpanda (Kafka), Vault, MinIO, RocketMQ, Nacos, RabbitMQ, Cassandra, Seata, MIT Kerberos KDC, and Zookeeper.
 
@@ -62,7 +62,7 @@ KEY FEATURES
 
 QUICK START
 
-Add to your project: dev.ggcode : spring-debug-agent : 0.8.0
+Add to your project: dev.ggcode : spring-debug-agent : 0.8.1
 
 Configure LLM in application.yml:
   debug-agent.llm.base-url = api.openai.com/v1

@@ -2,7 +2,7 @@
 
 An AI-powered debugging agent that **embeds directly into your Spring Boot application**. Add one dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
 
-> **226+ diagnostic tools** across **64 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
+> **246+ diagnostic tools** across **66 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
 
 ## Why?
 
@@ -90,7 +90,7 @@ Any endpoint that implements the OpenAI `/v1/chat/completions` API:
 
 ---
 
-## Diagnostic Tools (226+ total)
+## Diagnostic Tools (246+ total)
 
 ### JVM Diagnostics (`JvmInspector` — 16 tools)
 
@@ -628,6 +628,47 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | `find_class_location` | Find JAR/file location of a loaded class |
 | `get_classloading_info` | Class loading/unloading statistics |
 
+### System Control (`SystemControlInspector` — 3 tools)  *v0.8.1*
+
+| Tool | Description |
+|------|-------------|
+| `trigger_gc` | Force a garbage collection and show before/after memory comparison |
+| `dump_thread_stack` | Capture a full thread dump: all threads, states, stack traces, deadlock detection |
+| `dump_heap` | Trigger a heap dump (hprof format) to a file for offline analysis |
+
+### Spring AOP (`AopInspector` — 4 tools)  *v0.8.1*
+
+| Tool | Description |
+|------|-------------|
+| `get_aop_aspects` | List all @Aspect beans with their advice types and pointcut expressions |
+| `get_pointcut_expressions` | List all AOP pointcut expressions across aspects |
+| `get_proxy_beans` | List all beans that are AOP proxies (CGLIB or JDK dynamic) |
+| `get_aop_advice_info` | Detailed AOP advice info: @Before/@After/@Around, grouped by type |
+
+### Spring Cloud OpenFeign (`OpenFeignInspector` — 4 tools)  *v0.8.1*
+
+| Tool | Description |
+|------|-------------|
+| `get_feign_clients` | List all @FeignClient beans: name, URL, fallback, target interface |
+| `get_feign_client_config` | Feign configuration: timeouts, logger level, circuit breaker, compression |
+| `get_feign_interceptors` | List all Feign RequestInterceptor beans (OAuth2, LoadBalancer, custom) |
+| `get_feign_target_info` | Target info for a specific Feign client: URL, HTTP method mappings, paths |
+
+### Enhanced Inspector Tools (v0.8.1)
+
+| Tool | Inspector | Description |
+|------|-----------|-------------|
+| `test_data_source_connection` | `DataSourceInspector` | Test DB connectivity (SELECT 1), measure latency per DataSource |
+| `list_database_tables` | `DataSourceInspector` | List tables/views via JDBC DatabaseMetaData |
+| `get_jpa_entities` | `JpaInspector` | List JPA entity classes, attributes, persistence type from Metamodel |
+| `get_jpa_repositories` | `JpaInspector` | List Spring Data JPA repositories and their interfaces |
+| `evict_cache` | `CacheInspector` | Evict a cache key or clear entire cache |
+| `get_cache_config` | `CacheInspector` | Detailed cache config: Caffeine spec, TTL, expire policies |
+| `get_http_connection_detail` | `HttpClientInspector` | Per-route HTTP connection pool breakdown (leased, available, max) |
+| `get_health_component_detail` | `HealthInspector` | Deep-dive into a specific health component (db, redis, disk, etc.) |
+| `get_configuration_properties_report` | `EnvironmentInspector` | List all @ConfigurationProperties beans with prefix and resolved values |
+| `search_auto_configurations` | `FeatureFlagInspector` | Search auto-configuration classes by keyword with match reasons |
+
 ---
 
 ## Architecture
@@ -645,7 +686,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 │  │  └──────────┘     └────┬─────┘     └─────────────┘     │ │
 │  │                         │                                │ │
 │  │    ┌────────────────────┼────────────────────────┐      │ │
-│  │    │        64 Inspectors (226+ tools)           │      │ │
+│  │    │        66 Inspectors (246+ tools)           │      │ │
 │  │    │                    │                        │      │ │
 │  │  ┌─▼──┐ ┌────┐ ┌──────┐ ┌─────┐ ┌─────┐ ┌─────┐ │      │ │
 │  │  │JVM │ │Spng│ │Watch │ │ JMX │ │Reqs │ │Metrc│ │      │ │
@@ -678,7 +719,7 @@ Watch points use **ByteBuddy** runtime bytecode instrumentation — no restart n
 | Decision | Rationale |
 |----------|-----------|
 | **Embedded** (not external attach) | Zero friction — works in any IDE, no JVM attach permissions |
-| **226+ tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
+| **246+ tools, zero hard dependencies** | All optional inspectors use `@ConditionalOnClass` — agent JAR never forces a dependency |
 | **Custom HTTP client** (not Spring AI) | Minimal dependencies, works with any OpenAI-compatible endpoint |
 | **ByteBuddy** (not JDI) | Runtime bytecode enhancement, no separate agent process |
 | **Self-contained UI** (no CDN) | Works in enterprise environments with no internet access |
@@ -704,7 +745,7 @@ spring-debug-agent/
 │       │   ├── annotation/          # @DebugTool, @ToolParam
 │       │   ├── ToolRegistry.java    # Discovers and registers tools
 │       │   └── ToolExecutor.java    # Invokes tools, marshals args
-│       ├── inspector/               # 64 diagnostic inspectors (226+ tools)
+│       ├── inspector/               # 66 diagnostic inspectors (246+ tools)
 │       │   ├── JvmInspector.java        # Threads, memory, GC, heap, process info
 │       │   ├── SpringInspector.java      # Beans, config, annotations, methods
 │       │   ├── MBeanInspector.java       # JMX MBean browsing
@@ -878,7 +919,7 @@ Then open `http://localhost:8080/agent` and try asking:
 
 ### E2E Test Suite
 
-All 226+ tools are covered by automated E2E tests:
+All 246+ tools are covered by automated E2E tests:
 
 ```bash
 # 1. Generate test data (orders, HTTP traffic, logs, cache)

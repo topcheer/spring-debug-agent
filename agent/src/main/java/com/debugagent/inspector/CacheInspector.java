@@ -1,6 +1,8 @@
 package com.debugagent.inspector;
 
 import com.debugagent.tool.annotation.DebugTool;
+import com.debugagent.tool.annotation.ToolParam;
+import org.springframework.cache.CacheManager;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
@@ -119,5 +121,105 @@ public class CacheInspector implements ApplicationContextAware {
         // Try size() method via reflection for JCache or other implementations
         Object size = ReflectionHelper.invokeMethod(nativeCache, "size");
         return size;
+    }
+
+    @DebugTool(description = "Evict all entries from a cache, or clear a specific key. "
+            + "Useful for forcing cache refresh or troubleshooting stale data.")
+    public Map<String, Object> evictCache(
+            @ToolParam(description = "Cache name to evict") String cacheName,
+            @ToolParam(description = "Specific key to evict (null to clear entire cache)", required = false) String key
+    ) {
+        Map<String, Object> result = new LinkedHashMap<>();
+
+        try {
+            Object cacheManager = ReflectionHelper.getFirstBeanOfType(ctx,
+                    "org.springframework.cache.CacheManager");
+            if (cacheManager == null) {
+                result.put("error", "No CacheManager found");
+                return result;
+            }
+
+            Object cache = ReflectionHelper.invokeMethod(cacheManager, "getCache", cacheName);
+            if (cache == null) {
+                result.put("error", "Cache not found: " + cacheName);
+                return result;
+            }
+
+            if (key != null && !key.isEmpty()) {
+                ReflectionHelper.invokeMethod(cache, "evict", key);
+                result.put("status", "evicted_key");
+                result.put("cacheName", cacheName);
+                result.put("key", key);
+            } else {
+                ReflectionHelper.invokeMethod(cache, "clear");
+                result.put("status", "cleared");
+                result.put("cacheName", cacheName);
+            }
+        } catch (Exception e) {
+            result.put("error", "Failed to evict cache: " + e.getMessage());
+        }
+
+        return result;
+    }
+
+    @DebugTool(description = "Get detailed cache configuration: Caffeine spec, TTL, max size, "
+            + "weigher, expireAfterWrite, expireAfterAccess, recordStats settings.")
+    public List<Map<String, Object>> getCacheConfig() {
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        try {
+            Object cacheManager = ReflectionHelper.getFirstBeanOfType(ctx,
+                    "org.springframework.cache.CacheManager");
+            if (cacheManager == null) {
+                results.add(Map.of("info", "No CacheManager found"));
+                return results;
+            }
+
+            Map<String, Object> cmInfo = new LinkedHashMap<>();
+            cmInfo.put("cacheManagerType", cacheManager.getClass().getName());
+
+            Object cacheNames = ReflectionHelper.invokeMethod(cacheManager, "getCacheNames");
+            if (cacheNames instanceof Collection<?> names) {
+                for (Object name : names) {
+                    Map<String, Object> cfg = new LinkedHashMap<>();
+                    cfg.put("cacheName", name.toString());
+
+                    Object cache = ReflectionHelper.invokeMethod(cacheManager, "getCache", name.toString());
+                    if (cache != null) {
+                        Object nativeCache = ReflectionHelper.invokeMethod(cache, "getNativeCache");
+                        cfg.put("nativeType", nativeCache != null ? nativeCache.getClass().getName() : "unknown");
+
+                        // Caffeine: try to read builder spec
+                        if (nativeCache != null && nativeCache.getClass().getName().contains("Caffeine")) {
+                            Map<String, Object> caffeine = new LinkedHashMap<>();
+                            try {
+                                Object policy = ReflectionHelper.invokeMethod(nativeCache, "policy");
+                                if (policy != null) {
+                                    caffeine.put("policy", policy.getClass().getSimpleName());
+
+                                    // Try expireAfterWrite
+                                    Object expireVar = ReflectionHelper.invokeMethod(policy, "expireAfterWrite");
+                                    if (expireVar != null) {
+                                        caffeine.put("expireAfterWrite", ReflectionHelper.safeToString(expireVar));
+                                    }
+                                    Object expireAcc = ReflectionHelper.invokeMethod(policy, "expireAfterAccess");
+                                    if (expireAcc != null) {
+                                        caffeine.put("expireAfterAccess", ReflectionHelper.safeToString(expireAcc));
+                                    }
+                                }
+                            } catch (Exception ignored) {}
+                            cfg.put("caffeineConfig", caffeine);
+                        }
+                    }
+
+                    results.add(cfg);
+                }
+            }
+            results.add(0, cmInfo);
+        } catch (Exception e) {
+            results.add(Map.of("error", "Failed to get cache config: " + e.getMessage()));
+        }
+
+        return results;
     }
 }

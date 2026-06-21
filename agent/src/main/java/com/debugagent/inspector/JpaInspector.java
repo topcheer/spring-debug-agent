@@ -136,4 +136,105 @@ public class JpaInspector implements ApplicationContextAware {
 
         return result;
     }
+
+    @DebugTool(description = "List all JPA entity classes with their table names, mapped class names, "
+            + "and whether they have associations. Uses Hibernate Metamodel to introspect entities.")
+    public List<Map<String, Object>> getJpaEntities() {
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        try {
+            Object emf = ReflectionHelper.getFirstBeanOfType(ctx,
+                    "jakarta.persistence.EntityManagerFactory");
+            if (emf == null) {
+                emf = ReflectionHelper.getFirstBeanOfType(ctx,
+                        "javax.persistence.EntityManagerFactory");
+            }
+            if (emf == null) {
+                results.add(Map.of("info", "No EntityManagerFactory found"));
+                return results;
+            }
+
+            // Get Metamodel
+            Object metamodel = ReflectionHelper.invokeMethod(emf, "getMetamodel");
+            if (metamodel == null) {
+                results.add(Map.of("info", "Metamodel not available"));
+                return results;
+            }
+
+            Object entities = ReflectionHelper.invokeMethod(metamodel, "getEntities");
+            if (entities instanceof Collection<?> entitySet) {
+                for (Object entityType : entitySet) {
+                    Map<String, Object> entity = new LinkedHashMap<>();
+                    Object javaType = ReflectionHelper.invokeMethod(entityType, "getJavaType");
+                    entity.put("className", javaType != null ? ((Class<?>) javaType).getName() : "unknown");
+
+                    Object typeName = ReflectionHelper.invokeMethod(entityType, "getName");
+                    entity.put("entityName", typeName);
+
+                    // Try to get table name from @Table annotation via persistenceType
+                    Object persistenceType = ReflectionHelper.invokeMethod(entityType, "getPersistenceType");
+                    entity.put("persistenceType", persistenceType != null ? persistenceType.toString() : "UNKNOWN");
+
+                    // Attributes
+                    Object attrs = ReflectionHelper.invokeMethod(entityType, "getAttributes");
+                    if (attrs instanceof Collection<?> attrCol) {
+                        List<String> attrNames = new ArrayList<>();
+                        for (Object attr : attrCol) {
+                            attrNames.add(ReflectionHelper.invokeMethod(attr, "getName").toString());
+                        }
+                        entity.put("attributes", attrNames);
+                    }
+
+                    results.add(entity);
+                }
+            }
+        } catch (Exception e) {
+            results.add(Map.of("error", "Failed to get JPA entities: " + e.getMessage()));
+        }
+
+        return results;
+    }
+
+    @DebugTool(description = "List all Spring Data JPA repositories: bean name, domain type, ID type, "
+            + "and repository interface. Uses Spring Data's RepositoryInformation.")
+    public List<Map<String, Object>> getJpaRepositories() {
+        List<Map<String, Object>> results = new ArrayList<>();
+
+        try {
+            // Find all beans implementing Repository
+            List<Object> repos = ReflectionHelper.getBeansOfType(ctx,
+                    "org.springframework.data.repository.Repository");
+            if (repos.isEmpty()) {
+                results.add(Map.of("info", "No Spring Data repositories found"));
+                return results;
+            }
+
+            for (Object repo : repos) {
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("className", repo.getClass().getName());
+
+                // Try to get RepositoryInformation via the proxy
+                for (Class<?> iface : repo.getClass().getInterfaces()) {
+                    if (iface.getName().contains("Repository")) {
+                        info.put("repositoryInterface", iface.getName());
+                        break;
+                    }
+                }
+
+                // Check for CrudRepository, JpaRepository, PagingAndSortingRepository
+                List<String> repoTypes = new ArrayList<>();
+                for (Class<?> iface : repo.getClass().getInterfaces()) {
+                    String name = iface.getSimpleName();
+                    if (name.contains("Repository")) repoTypes.add(name);
+                }
+                info.put("interfaces", repoTypes);
+
+                results.add(info);
+            }
+        } catch (Exception e) {
+            results.add(Map.of("error", "Failed to get repositories: " + e.getMessage()));
+        }
+
+        return results;
+    }
 }

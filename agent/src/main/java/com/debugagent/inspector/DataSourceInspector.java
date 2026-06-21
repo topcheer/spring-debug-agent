@@ -126,4 +126,73 @@ public class DataSourceInspector implements ApplicationContextAware {
             return false;
         }
     }
+
+    @DebugTool(description = "Test database connectivity by executing a simple query (SELECT 1). "
+            + "Returns latency in milliseconds and connection status for each DataSource bean.")
+    public List<Map<String, Object>> testDataSourceConnection() {
+        List<Map<String, Object>> results = new ArrayList<>();
+        try {
+            Map<String, DataSource> dsMap = ctx.getBeansOfType(DataSource.class);
+            for (Map.Entry<String, DataSource> entry : dsMap.entrySet()) {
+                Map<String, Object> info = new LinkedHashMap<>();
+                info.put("beanName", entry.getKey());
+                long start = System.currentTimeMillis();
+                try (var conn = entry.getValue().getConnection()) {
+                    long latency = System.currentTimeMillis() - start;
+                    info.put("status", "OK");
+                    info.put("latencyMs", latency);
+                    info.put("url", conn.getMetaData().getURL());
+                    info.put("driver", conn.getMetaData().getDriverName());
+                    info.put("databaseProductName", conn.getMetaData().getDatabaseProductName());
+                    info.put("databaseVersion", conn.getMetaData().getDatabaseProductVersion());
+                    try (var stmt = conn.createStatement();
+                         var rs = stmt.executeQuery("SELECT 1")) {
+                        if (rs.next()) {
+                            info.put("testQueryResult", rs.getInt(1));
+                        }
+                    }
+                } catch (Exception e) {
+                    info.put("status", "FAILED");
+                    info.put("latencyMs", System.currentTimeMillis() - start);
+                    info.put("error", e.getClass().getSimpleName() + ": " + e.getMessage());
+                }
+                results.add(info);
+            }
+            if (results.isEmpty()) {
+                results.add(Map.of("error", "No DataSource beans found"));
+            }
+        } catch (Exception e) {
+            results.add(Map.of("error", "Failed to test connection: " + e.getMessage()));
+        }
+        return results;
+    }
+
+    @DebugTool(description = "List all database tables, views via JDBC DatabaseMetaData. "
+            + "Useful for understanding schema without direct database access.")
+    public List<Map<String, Object>> listDatabaseTables(
+            @ToolParam(description = "Table name pattern filter (e.g. 'ORD%', null for all)", required = false) String tablePattern,
+            @ToolParam(description = "Table types filter (e.g. TABLE or VIEW, null for all)", required = false) String[] types
+    ) {
+        List<Map<String, Object>> results = new ArrayList<>();
+        try {
+            DataSource ds = ctx.getBeansOfType(DataSource.class).values().iterator().next();
+            try (var conn = ds.getConnection()) {
+                var metaData = conn.getMetaData();
+                try (var rs = metaData.getTables(null, null, tablePattern, types)) {
+                    while (rs.next()) {
+                        Map<String, Object> table = new LinkedHashMap<>();
+                        table.put("catalog", rs.getString("TABLE_CAT"));
+                        table.put("schema", rs.getString("TABLE_SCHEM"));
+                        table.put("name", rs.getString("TABLE_NAME"));
+                        table.put("type", rs.getString("TABLE_TYPE"));
+                        table.put("remarks", rs.getString("REMARKS"));
+                        results.add(table);
+                    }
+                }
+            }
+        } catch (Exception e) {
+            results.add(Map.of("error", "Failed to list tables: " + e.getMessage()));
+        }
+        return results;
+    }
 }
