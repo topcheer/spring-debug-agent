@@ -267,4 +267,32 @@ kerberos:
 spring.security.kerberos:
   service-principal: HTTP/localhost@DEMO.LOCAL
   keytab-location: docker/kdc/keytabs/demo.keytab
+
+# Feign client configuration (for OpenFeignInspector)
+spring.cloud.openfeign:
+  enabled: true
+  client:
+    config:
+      default:
+        connect-timeout: 5000
+        read-timeout: 10000
+        logger-level: FULL
+  compression:
+    request:
+      enabled: true
+    response:
+      enabled: true
+
+# Demo order properties (for EnvironmentInspector get_configuration_properties_report)
+demo:
+  order:
+    max-items-per-order: 100
+    tax-rate: 0.08
+    currency: USD
+    enable-discounts: true
+    supported-regions: US, EU, CN, JP
+    shipping:
+      provider: dhl
+      max-weight-kg: 30
+      insurance-enabled: true
   debug: true

@@ -39,9 +39,12 @@ public class AopInspector implements ApplicationContextAware {
             Map<String, Object> aspectBeans = new LinkedHashMap<>();
             for (String name : ctx.getBeanDefinitionNames()) {
                 try {
-                    Class<?> beanType = ctx.getType(name);
-                    if (beanType != null && beanType.isAnnotationPresent((Class<? extends java.lang.annotation.Annotation>) aspectClass)) {
-                        aspectBeans.put(name, ctx.getBean(name));
+                    Object bean = ctx.getBean(name);
+                    if (bean == null) continue;
+                    // Use ClassUtils.getUserClass to see past CGLIB proxies
+                    Class<?> beanType = org.springframework.util.ClassUtils.getUserClass(bean);
+                    if (beanType.isAnnotationPresent((Class<? extends java.lang.annotation.Annotation>) aspectClass)) {
+                        aspectBeans.put(name, bean);
                     }
                 } catch (Exception ignored) {}
             }
@@ -54,9 +57,10 @@ public class AopInspector implements ApplicationContextAware {
             for (Map.Entry<String, Object> entry : aspectBeans.entrySet()) {
                 Map<String, Object> aspectInfo = new LinkedHashMap<>();
                 aspectInfo.put("beanName", entry.getKey());
-                aspectInfo.put("className", entry.getValue().getClass().getName());
+                Class<?> userClass = org.springframework.util.ClassUtils.getUserClass(entry.getValue());
+                aspectInfo.put("className", userClass.getName());
 
-                List<Map<String, Object>> adviceList = extractAdvice(entry.getValue().getClass(), ctx);
+                List<Map<String, Object>> adviceList = extractAdvice(userClass, ctx);
                 if (!adviceList.isEmpty()) {
                     aspectInfo.put("adviceCount", adviceList.size());
                     aspectInfo.put("advice", adviceList);
@@ -85,8 +89,10 @@ public class AopInspector implements ApplicationContextAware {
 
             for (String name : ctx.getBeanDefinitionNames()) {
                 try {
-                    Class<?> beanType = ctx.getType(name);
-                    if (beanType != null && beanType.isAnnotationPresent((Class<? extends java.lang.annotation.Annotation>) aspectClass)) {
+                    Object bean = ctx.getBean(name);
+                    if (bean == null) continue;
+                    Class<?> beanType = org.springframework.util.ClassUtils.getUserClass(bean);
+                    if (beanType.isAnnotationPresent((Class<? extends java.lang.annotation.Annotation>) aspectClass)) {
                         for (Method m : beanType.getDeclaredMethods()) {
                             // Check for @Pointcut
                             for (Annotation ann : m.getAnnotations()) {
@@ -198,8 +204,10 @@ public class AopInspector implements ApplicationContextAware {
 
             for (String name : ctx.getBeanDefinitionNames()) {
                 try {
-                    Class<?> beanType = ctx.getType(name);
-                    if (beanType == null || !beanType.isAnnotationPresent((Class<? extends java.lang.annotation.Annotation>) aspectClass)) continue;
+                    Object bean = ctx.getBean(name);
+                    if (bean == null) continue;
+                    Class<?> beanType = org.springframework.util.ClassUtils.getUserClass(bean);
+                    if (!beanType.isAnnotationPresent((Class<? extends java.lang.annotation.Annotation>) aspectClass)) continue;
 
                     if (aspectName != null && !aspectName.isEmpty()
                             && !name.toLowerCase().contains(aspectName.toLowerCase())

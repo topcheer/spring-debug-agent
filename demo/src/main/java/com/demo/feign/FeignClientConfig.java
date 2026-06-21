@@ -16,7 +16,8 @@ import java.util.Map;
 @ConditionalOnClass(name = "org.springframework.cloud.openfeign.FeignClient")
 public class FeignClientConfig {
 
-    @FeignClient(name = "inventory-service", url = "http://localhost:8081")
+    @FeignClient(name = "inventory-service", url = "http://localhost:8081",
+            fallback = FeignFallbacks.InventoryClientFallback.class)
     public interface InventoryClient {
 
         @GetMapping("/api/inventory/{sku}")
@@ -29,7 +30,8 @@ public class FeignClientConfig {
         List<Map<String, Object>> listInventory();
     }
 
-    @FeignClient(name = "payment-service", url = "http://localhost:8082")
+    @FeignClient(name = "payment-service", url = "http://localhost:8082",
+            fallback = FeignFallbacks.PaymentClientFallback.class)
     public interface PaymentClient {
 
         @PostMapping("/api/payments/process")
