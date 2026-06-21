@@ -6,6 +6,7 @@ spring:
       - org.springframework.boot.autoconfigure.cassandra.CassandraAutoConfiguration
       - org.springframework.boot.autoconfigure.data.cassandra.CassandraReactiveDataAutoConfiguration
       - org.springframework.boot.autoconfigure.data.cassandra.CassandraDataAutoConfiguration
+      - org.apache.rocketmq.spring.autoconfigure.RocketMQAutoConfiguration
   application:
     name: order-management-demo
 
@@ -185,15 +186,26 @@ spring.rabbitmq:
       concurrency: 1
       max-concurrency: 3
 
-# Dubbo (N/A registry = no external registry needed)
+# Dubbo (ZooKeeper registry, fail-safe: won't crash if ZK unavailable)
 dubbo:
   application:
     name: order-management-demo
+  scan:
+    base-packages: com.demo.dubbo
   registry:
-    address: N/A
+    address: zookeeper://localhost:2181
+    register-mode: instance
+    check: false           # Don't fail startup if ZK not running
+    register: true
+    use-as-config-center: false  # Prevent auto config-center ZK check
+    use-as-metadata-center: false
   protocol:
     name: dubbo
     port: 20880
+  consumer:
+    check: false           # Don't fail on consumer side if provider not ready
+  provider:
+    timeout: 3000
 
 # RocketMQ (fail-safe: won't crash if NameServer unavailable)
 rocketmq:
@@ -201,6 +213,7 @@ rocketmq:
   producer:
     group: demo-producer-group
     send-message-timeout: 3000
+  enabled: false  # Set to true when NameServer is running
 
 # Nacos (fail-safe: won't crash if server unavailable)
 spring.cloud.nacos:
@@ -217,9 +230,9 @@ spring.cloud.sentinel:
     dashboard: localhost:8858
   eager: true
 
-# Seata (file mode — no TC server needed for config inspection)
+# Seata (file mode, disabled TC connection — inspector reads config + annotations)
 seata:
-  enabled: true
+  enabled: false          # Set true with running TC server to activate distributed TX
   application-id: order-management-demo
   tx-service-group: demo-tx-group
   service:

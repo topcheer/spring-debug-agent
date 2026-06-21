@@ -2,6 +2,8 @@ package com.debugagent.inspector;
 
 import com.debugagent.tool.annotation.DebugTool;
 import com.debugagent.tool.annotation.ToolParam;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationContext;
 import org.springframework.context.ApplicationContextAware;
 
@@ -14,6 +16,8 @@ import java.util.*;
  */
 public class ZookeeperInspector implements ApplicationContextAware {
 
+    private static final Logger log = LoggerFactory.getLogger(ZookeeperInspector.class);
+
     private ApplicationContext ctx;
 
     @Override
@@ -22,9 +26,8 @@ public class ZookeeperInspector implements ApplicationContextAware {
     }
 
     private Object getCuratorClient() {
-        Object client = ReflectionHelper.getFirstBeanOfType(ctx,
+        return ReflectionHelper.getFirstBeanOfType(ctx,
                 "org.apache.curator.framework.CuratorFramework");
-        return client;
     }
 
     private Object getZkClient() {
@@ -48,9 +51,9 @@ public class ZookeeperInspector implements ApplicationContextAware {
         Object curator = getCuratorClient();
         if (curator != null) {
             try {
-                Object children = ReflectionHelper.invokeMethod(curator, "getChildren");
-                if (children != null) {
-                    children = ReflectionHelper.invokeMethod(children, "forPath", p);
+                Object builder = ReflectionHelper.invokeMethod(curator, "getChildren");
+                if (builder != null) {
+                    Object children = ReflectionHelper.invokeMethod(builder, "forPath", p);
                     if (children instanceof List) {
                         for (Object child : (List<?>) children) {
                             Map<String, Object> c = new LinkedHashMap<>();
@@ -58,16 +61,29 @@ public class ZookeeperInspector implements ApplicationContextAware {
                             c.put("fullPath", p.equals("/") ? "/" + child : p + "/" + child);
                             result.add(c);
                         }
+                        // If list is empty, add informational entry
+                        if (((List<?>) children).isEmpty()) {
+                            result.add(Map.of("status", "empty",
+                                    "message", "Path '" + p + "' exists but has no child nodes",
+                                    "path", p,
+                                    "namespace", String.valueOf(ReflectionHelper.invokeMethod(curator, "getNamespace"))));
+                        }
+                    } else {
+                        result.add(Map.of("status", "no_children",
+                                "hint", "Path '" + p + "' has no children or forPath returned: " + children,
+                                "path", p));
                     }
+                } else {
+                    result.add(Map.of("status", "reflection_error",
+                            "hint", "Could not invoke getChildren() on " + curator.getClass().getName(),
+                            "curatorType", curator.getClass().getName()));
                 }
             } catch (Exception e) {
                 result.add(Map.of("error", "Curator: " + e.getClass().getSimpleName() + ": " + e.getMessage()));
                 return result;
             }
-        }
-
-        // Try raw ZooKeeper
-        if (result.isEmpty()) {
+        } else {
+            // Curator not found, try raw ZooKeeper
             Object zk = getZkClient();
             if (zk != null) {
                 try {

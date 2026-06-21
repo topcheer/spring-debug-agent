@@ -35,7 +35,7 @@
         <dependency>
             <groupId>dev.ggcode</groupId>
             <artifactId>spring-debug-agent</artifactId>
-            <version>0.8.0</version>
+            <version>0.8.1-SNAPSHOT</version>
         </dependency>
 
         <!-- Spring Boot Starters -->
@@ -340,6 +340,18 @@
         <dependency>
             <groupId>org.apache.curator</groupId>
             <artifactId>curator-recipes</artifactId>
+            <version>5.7.1</version>
+        </dependency>
+        <!-- Embedded ZooKeeper server for demo (Curator TestingServer) -->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-test</artifactId>
+            <version>5.7.1</version>
+        </dependency>
+        <!-- Curator service discovery — needed by Dubbo instance-mode ZK registration -->
+        <dependency>
+            <groupId>org.apache.curator</groupId>
+            <artifactId>curator-x-discovery</artifactId>
             <version>5.7.1</version>
         </dependency>
     </dependencies>

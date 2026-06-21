@@ -61,7 +61,16 @@ public final class ReflectionHelper {
      * Safely invoke a no-arg method by name on an object.
      */
     public static Object invokeMethod(Object target, String methodName) {
+        if (target == null) return null;
         try {
+            // First try getMethods() which includes all public interface methods
+            for (Method m : target.getClass().getMethods()) {
+                if (m.getName().equals(methodName) && m.getParameterCount() == 0) {
+                    m.setAccessible(true);
+                    return m.invoke(target);
+                }
+            }
+            // Fallback to findMethod (searches declared + inherited)
             Method m = findMethod(target.getClass(), methodName);
             if (m != null) {
                 m.setAccessible(true);
@@ -104,7 +113,7 @@ public final class ReflectionHelper {
     }
 
     /**
-     * Find a method by name in the class hierarchy.
+     * Find a method by name in the class hierarchy (including interfaces).
      */
     public static Method findMethod(Class<?> clazz, String methodName, Class<?>... paramTypes) {
         Class<?> current = clazz;
@@ -117,6 +126,14 @@ public final class ReflectionHelper {
                     for (Method m : current.getDeclaredMethods()) {
                         if (m.getName().equals(methodName) && m.getParameterCount() == 0) {
                             return m;
+                        }
+                    }
+                    // Also search interfaces for default methods
+                    for (Class<?> iface : current.getInterfaces()) {
+                        for (Method m : iface.getMethods()) {
+                            if (m.getName().equals(methodName) && m.getParameterCount() == 0) {
+                                return m;
+                            }
                         }
                     }
                 }

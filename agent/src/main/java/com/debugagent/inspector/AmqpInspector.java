@@ -37,21 +37,45 @@ public class AmqpInspector implements ApplicationContextAware {
     }
 
     @DebugTool(description = "List all RabbitMQ queues: queue name, durable, exclusive, auto-delete, "
-            + "arguments, and consumer count. Reads from RabbitAdmin queue properties. "
+            + "arguments, and consumer count. Reads from RabbitAdmin queue properties or Spring bean definitions. "
             + "Useful for verifying queue declaration and diagnosing missing queue issues.")
     public List<Map<String, Object>> getAmqpQueues() {
         List<Map<String, Object>> result = new ArrayList<>();
         Object admin = getRabbitAdmin();
-        if (admin == null) {
-            return List.of(Map.of("error", "No RabbitAdmin found. Add spring-boot-starter-amqp."));
+
+        // First try live broker via RabbitAdmin
+        if (admin != null) {
+            try {
+                Object queueNames = ReflectionHelper.invokeMethod(admin, "getQueueNames");
+                if (queueNames instanceof String[]) {
+                    for (String name : (String[]) queueNames) {
+                        Map<String, Object> q = new LinkedHashMap<>();
+                        q.put("name", name);
+                        q.put("source", "broker");
+                        result.add(q);
+                    }
+                }
+            } catch (Exception ignored) {
+                // Broker not connected — fall through to bean inspection
+            }
         }
 
-        Object queueNames = ReflectionHelper.invokeMethod(admin, "getQueueNames");
-        if (queueNames instanceof String[]) {
-            for (String name : (String[]) queueNames) {
-                Map<String, Object> q = new LinkedHashMap<>();
-                q.put("name", name);
-                result.add(q);
+        // Fallback: read Queue bean definitions from Spring context (works without a live broker)
+        if (result.isEmpty()) {
+            List<?> queueBeans = ReflectionHelper.getBeansOfType(ctx,
+                    "org.springframework.amqp.core.Queue");
+            for (Object q : queueBeans) {
+                Map<String, Object> info = new LinkedHashMap<>();
+                Object name = ReflectionHelper.invokeMethod(q, "getName");
+                info.put("name", name != null ? name : q.toString());
+                Object durable = ReflectionHelper.invokeMethod(q, "isDurable");
+                if (durable != null) info.put("durable", durable);
+                Object exclusive = ReflectionHelper.invokeMethod(q, "isExclusive");
+                if (exclusive != null) info.put("exclusive", exclusive);
+                Object autoDelete = ReflectionHelper.invokeMethod(q, "isAutoDelete");
+                if (autoDelete != null) info.put("autoDelete", autoDelete);
+                info.put("source", "spring_bean");
+                result.add(info);
             }
         }
 

@@ -1,0 +1,41 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<definitions xmlns="http://www.omg.org/spec/BPMN/20100524/MODEL"
+             xmlns:flowable="http://flowable.org/bpmn"
+             targetNamespace="http://demo.flowable.org">
+
+    <process id="orderApproval" name="Order Approval Process" isExecutable="true">
+
+        <startEvent id="start" name="Submit Order"/>
+
+        <sequenceFlow id="flow1" sourceRef="start" targetRef="managerApproval"/>
+
+        <userTask id="managerApproval" name="Manager Approval"
+                  flowable:assignee="${requester}'s manager"
+                  flowable:candidateGroups="managers"/>
+
+        <sequenceFlow id="flow2" sourceRef="managerApproval" targetRef="checkAmount"/>
+
+        <exclusiveGateway id="checkAmount" name="Amount Check"/>
+
+        <sequenceFlow id="flow3" sourceRef="checkAmount" targetRef="autoApprove">
+            <conditionExpression>${amount &lt; 1000}</conditionExpression>
+        </sequenceFlow>
+
+        <sequenceFlow id="flow4" sourceRef="checkAmount" targetRef="directorApproval">
+            <conditionExpression>${amount &gt;= 1000}</conditionExpression>
+        </sequenceFlow>
+
+        <serviceTask id="autoApprove" name="Auto Approve"
+                     flowable:class="com.demo.flowable.AutoApproveDelegate"/>
+
+        <userTask id="directorApproval" name="Director Approval"
+                  flowable:assignee="director"/>
+
+        <sequenceFlow id="flow5" sourceRef="autoApprove" targetRef="end"/>
+        <sequenceFlow id="flow6" sourceRef="directorApproval" targetRef="end"/>
+
+        <endEvent id="end" name="Order Processed"/>
+
+    </process>
+
+</definitions>
