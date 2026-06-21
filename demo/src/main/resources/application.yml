@@ -258,3 +258,13 @@ spring.cassandra:
 curator:
   connect-string: localhost:2181
   session-timeout-ms: 30000
+
+# Kerberos / SPNEGO (requires demo-kdc container)
+kerberos:
+  enabled: true
+  keytab-path: docker/kdc/keytabs/demo.keytab
+
+spring.security.kerberos:
+  service-principal: HTTP/localhost@DEMO.LOCAL
+  keytab-location: docker/kdc/keytabs/demo.keytab
+  debug: true

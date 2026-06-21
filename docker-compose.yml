@@ -131,3 +131,14 @@ services:
       SEATA_PORT: 8091
       STORE_MODE: file
       SEATA_IP: localhost
+
+  # ---- MIT Kerberos KDC ----
+  kdc:
+    build: ./docker/kdc
+    container_name: demo-kdc
+    ports:
+      - "88:88/udp"
+      - "88:88/tcp"
+      - "749:749/tcp"
+    volumes:
+      - ./docker/kdc/keytabs:/keytabs
