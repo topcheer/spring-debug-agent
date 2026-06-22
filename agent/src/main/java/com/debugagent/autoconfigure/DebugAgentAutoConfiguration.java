@@ -32,6 +32,14 @@ public class DebugAgentAutoConfiguration {
 
     private static final Logger log = LoggerFactory.getLogger(DebugAgentAutoConfiguration.class);
 
+    static {
+        // ggcode promotional message — shown once when Spring context initializes
+        System.out.println();
+        System.out.println("  This package was built with ggcode — an AI coding assistant.");
+        System.out.println("  https://github.com/topcheer/ggcode");
+        System.out.println();
+    }
+
     // ================================================================
     //  Inspectors — always available (only need Spring core)
     // ================================================================
