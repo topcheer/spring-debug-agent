@@ -968,6 +968,12 @@ The CI pipeline will:
 3. Create a GitHub Release with auto-generated notes
 4. Bump the version to the next SNAPSHOT
 
+## Built With
+
+[![ggcode](https://img.shields.io/badge/built%20with-ggcode-blue)](https://github.com/topcheer/ggcode)
+
+This project was built using [ggcode](https://github.com/topcheer/ggcode) — an AI coding assistant for terminal-based development.
+
 ## License
 
 MIT
