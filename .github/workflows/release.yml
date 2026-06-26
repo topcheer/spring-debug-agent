@@ -2,11 +2,15 @@ name: Release to Maven Central
 
 # Trigger: push a tag like v0.2.0
 # The tag name IS the source of truth — the workflow overrides all POM versions to match.
-# After a successful release, the POM version on main is bumped to the next SNAPSHOT.
+# After a successful release, the agent POM version on main is bumped to the next SNAPSHOT.
 #
 # Usage:
 #   git tag v0.2.0
 #   git push origin v0.2.0
+#
+# What gets published:
+#   1. dev.ggcode:spring-debug-agent  →  Maven Central (agent library JAR)
+#   2. spring-debug-agent-javaagent.jar  →  GitHub Release asset (fat JAR for -javaagent mode)
 
 on:
   push:
@@ -54,7 +58,7 @@ jobs:
 
           echo "::notice::Releasing $VERSION"
 
-      # ── Step 2: Set release version via mvn versions:set ─────────
+      # ── Step 2: Set release version ──────────────────────────────
       - name: Set release version
         run: |
           VERSION="${{ steps.version.outputs.release_version }}"
@@ -92,8 +96,8 @@ jobs:
           </settings>
           SETTINGS
 
-      # ── Step 5: Build, Sign, Deploy ──────────────────────────────
-      - name: Deploy to Maven Central
+      # ── Step 5: Deploy agent to Maven Central ────────────────────
+      - name: Deploy agent to Maven Central
         run: |
           mvn clean deploy -DskipTests \
             -Prelease \
@@ -105,7 +109,21 @@ jobs:
           SONATYPE_USERNAME: ${{ secrets.SONATYPE_USERNAME }}
           SONATYPE_TOKEN: ${{ secrets.SONATYPE_TOKEN }}
 
-      # ── Step 6: Bump to next SNAPSHOT ────────────────────────────
+      # ── Step 6: Build javaagent fat JAR ──────────────────────────
+      - name: Build javaagent fat JAR
+        run: |
+          # Install agent to local repo so javaagent can resolve it
+          mvn install -f agent/pom.xml -DskipTests -q -Dgpg.skip=true
+
+          # Build the javaagent fat JAR
+          mvn clean package -f javaagent/pom.xml -DskipTests -q -Dgpg.skip=true
+
+          # Verify output
+          echo "=== Javaagent JAR ==="
+          ls -lh javaagent/target/spring-debug-agent-javaagent.jar
+          unzip -p javaagent/target/spring-debug-agent-javaagent.jar META-INF/MANIFEST.MF | head -5
+
+      # ── Step 7: Bump to next SNAPSHOT ────────────────────────────
       - name: Bump to next SNAPSHOT
         run: |
           SNAPSHOT="${{ steps.version.outputs.snapshot_version }}"
@@ -118,7 +136,7 @@ jobs:
           git commit -m "chore: bump version to $SNAPSHOT [skip ci]"
           git push origin HEAD:main
 
-      # ── Step 7: Create GitHub Release ────────────────────────────
+      # ── Step 8: Create GitHub Release ────────────────────────────
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
@@ -127,14 +145,16 @@ jobs:
           generate_release_notes: true
           draft: false
           prerelease: ${{ contains(steps.version.outputs.release_version, '-') }}
+          files: |
+            javaagent/target/spring-debug-agent-javaagent.jar
           body: |
-            ## Maven Central
+            ## Maven Central (Embedded Mode)
 
             ```xml
             <dependency>
-              <groupId>dev.ggcode</groupId>
-              <artifactId>spring-debug-agent</artifactId>
-              <version>${{ steps.version.outputs.release_version }}</version>
+                <groupId>dev.ggcode</groupId>
+                <artifactId>spring-debug-agent</artifactId>
+                <version>${{ steps.version.outputs.release_version }}</version>
             </dependency>
             ```
 
@@ -142,3 +162,15 @@ jobs:
             ```groovy
             implementation 'dev.ggcode:spring-debug-agent:${{ steps.version.outputs.release_version }}'
             ```
+
+            ## Javaagent Mode (Zero Code Changes)
+
+            Download `spring-debug-agent-javaagent.jar` from the assets below, then:
+
+            ```bash
+            java -javaagent:spring-debug-agent-javaagent.jar \
+              -Ddebug-agent.llm.api-key=sk-your-key \
+              -jar your-app.jar
+            ```
+
+            Chat UI: http://localhost:9900
