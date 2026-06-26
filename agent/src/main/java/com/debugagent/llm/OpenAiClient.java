@@ -90,7 +90,7 @@ public class OpenAiClient {
                         HttpResponse.BodyHandlers.ofString(StandardCharsets.UTF_8));
 
                 int code = response.statusCode();
-                if (code >= 400 && isRetriable(code)) {
+                if (code >= 400 && isRetriable(code) && !isNonRetriableError(response.body())) {
                     lastError = new RuntimeException(
                             "LLM API error " + code + ": " + response.body());
                     long delay = calculateDelay(code, response, attempt);
@@ -141,7 +141,7 @@ public class OpenAiClient {
                 int code = response.statusCode();
                 if (code >= 400) {
                     String errorBody = new String(response.body().readAllBytes(), StandardCharsets.UTF_8);
-                    if (isRetriable(code) && attempt < maxRetries) {
+                    if (isRetriable(code) && !isNonRetriableError(errorBody) && attempt < maxRetries) {
                         long delay = calculateDelay(code, response, attempt);
                         log.warn("Retriable error {} (attempt {}/{}), retrying in {}ms",
                                 code, attempt + 1, maxRetries, delay);
@@ -203,7 +203,7 @@ public class OpenAiClient {
                 int code = response.statusCode();
                 if (code >= 400) {
                     String errorBody = readStreamSafely(response.body());
-                    if (isRetriable(code) && attempt < maxRetries) {
+                    if (isRetriable(code) && !isNonRetriableError(errorBody) && attempt < maxRetries) {
                         long delay = calculateDelay(code, response, attempt);
                         log.warn("Retriable HTTP {} (attempt {}/{}), retrying in {}ms: {}",
                                 code, attempt + 1, maxRetries, delay, errorBody);
@@ -336,6 +336,25 @@ public class OpenAiClient {
                 || statusCode == 502  // Bad gateway
                 || statusCode == 503  // Service unavailable
                 || statusCode == 504; // Gateway timeout
+    }
+
+    /**
+     * Check if the error response body contains a non-retriable error code.
+     * Some 429 errors are permanent (e.g. insufficient_quota) and should not be retried.
+     *
+     * Non-retriable error codes:
+     *   - insufficient_quota: account out of credits (will never succeed with retry)
+     *   - invalid_api_key: key is wrong/revoked (permanent)
+     *   - model_not_found: model name is wrong (permanent)
+     *   - context_length_exceeded: input too long (permanent)
+     */
+    private static boolean isNonRetriableError(String errorBody) {
+        if (errorBody == null || errorBody.isBlank()) return false;
+        String lower = errorBody.toLowerCase();
+        return lower.contains("insufficient_quota")
+                || lower.contains("invalid_api_key")
+                || lower.contains("model_not_found")
+                || lower.contains("context_length_exceeded");
     }
 
     /**

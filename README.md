@@ -1,6 +1,9 @@
 # Spring Debug Agent
 
-An AI-powered debugging agent that **embeds directly into your Spring Boot application**. Add one dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
+An AI-powered debugging agent for Spring Boot applications with two integration modes:
+
+- **Embedded mode** — Add one Maven dependency, configure an LLM key, and chat with your live application at `/agent` to inspect threads, memory, Spring beans, JMX MBeans, HTTP requests, metrics, and set runtime watch points — no external process, no agent attach, no IDE plugin required.
+- **Javaagent mode** *(new in v0.9.0)* — Attach to **any** Spring Boot app with zero code changes: `java -javaagent:agent.jar -jar app.jar`. The agent runs on a separate port (default 9900) and never interferes with the host application.
 
 > **246+ diagnostic tools** across **66 inspectors** — the most comprehensive embedded debugging toolkit for the JVM.
 
@@ -32,17 +35,21 @@ Automated recordings of real multi-turn AI debugging sessions (click to watch):
 
 ## Quick Start
 
-### 1. Add the dependency (Maven)
+### Mode A: Embedded (Maven dependency)
+
+Best for development and debugging — full Spring DI integration.
+
+#### 1. Add the dependency (Maven)
 
 ```xml
 <dependency>
     <groupId>dev.ggcode</groupId>
     <artifactId>spring-debug-agent</artifactId>
-    <version>0.8.1</version>
+    <version>0.9.0</version>
 </dependency>
 ```
 
-### 2. Configure your LLM
+#### 2. Configure your LLM
 
 ```yaml
 debug-agent:
@@ -61,7 +68,7 @@ debug-agent:
     retry-max-delay-ms: 30000
 ```
 
-### 3. Run your app and open the chat UI
+#### 3. Run your app and open the chat UI
 
 ```
 http://localhost:8080/agent
@@ -69,11 +76,53 @@ http://localhost:8080/agent
 
 That's it. The agent auto-configures via Spring Boot Starter — no code changes needed.
 
-### Gradle
+#### Gradle
 
 ```groovy
-implementation 'dev.ggcode:spring-debug-agent:0.8.1'
+implementation 'dev.ggcode:spring-debug-agent:0.9.0'
 ```
+
+### Mode B: Javaagent (zero code changes)
+
+Best for production debugging — attach to any Spring Boot app without modifying the codebase.
+
+```bash
+# Download or build the javaagent JAR
+java -javaagent:spring-debug-agent-javaagent.jar \
+  -Ddebug-agent.llm.api-key=sk-your-key \
+  -Ddebug-agent.llm.model=gpt-4o \
+  -jar your-spring-boot-app.jar
+```
+
+The agent starts on a **separate port** (default 9900) and never interferes with the host application:
+
+- **Chat UI**: http://localhost:9900
+- **Health**: http://localhost:9900/api/health
+
+Configuration via agent args, system properties, or env vars:
+
+```bash
+# Via agent args
+java -javaagent:agent.jar=port=9900,api-key=sk-xxx,model=gpt-4o -jar app.jar
+
+# Via system properties (recommended)
+java -javaagent:agent.jar \
+  -Ddebug-agent.llm.api-key=sk-xxx \
+  -Ddebug-agent.port=9900 \
+  -jar app.jar
+
+# Via environment variables
+LLM_API_KEY=sk-xxx java -javaagent:agent.jar -jar app.jar
+
+# Using a non-OpenAI provider (e.g., DeepSeek)
+java -javaagent:agent.jar \
+  -Ddebug-agent.llm.base-url=https://api.deepseek.com/v1 \
+  -Ddebug-agent.llm.api-key=sk-xxx \
+  -Ddebug-agent.llm.model=deepseek-chat \
+  -jar app.jar
+```
+
+> See [`javaagent/README.md`](javaagent/README.md) for full documentation on javaagent mode.
 
 ## Supported LLM Providers
 
@@ -765,6 +814,17 @@ spring-debug-agent/
 ├── demo/                            # Demo app (Order Management System)
 │   └── ...
 │
+├── javaagent/                       # Javaagent module (zero-code-attach mode)
+│   ├── pom.xml                      # Shade plugin: fat JAR + package relocation
+│   └── src/main/java/com/debugagent/javaagent/
+│       ├── JavaAgentBootstrap.java  # premain() entry + ByteBuddy instrumentation
+│       ├── AgentClassLoader.java    # Child-first ClassLoader for isolation
+│       ├── AgentLauncher.java       # Init entry loaded by child CL
+│       ├── AgentHttpServer.java     # JDK HttpServer (port 9900) + SSE + Chat UI
+│       ├── StandaloneInspectorFactory.java  # Creates all inspectors without Spring DI
+│       ├── SpringRunAdvice.java     # ByteBuddy advice: captures SpringApplication.run() return
+│       └── AgentConfig.java         # Multi-source config (args → sysprops → env)
+│
 ├── docker/                           # Docker infrastructure for demo
 │   └── kdc/                          # MIT Kerberos KDC (Dockerfile, init script, keytab output)
 │       ├── Dockerfile                # Ubuntu 22.04 + krb5-kdc
@@ -973,6 +1033,41 @@ The CI pipeline will:
 [![ggcode](https://img.shields.io/badge/built%20with-ggcode-blue)](https://github.com/topcheer/ggcode)
 
 This project was built using [ggcode](https://github.com/topcheer/ggcode) — an AI coding assistant for terminal-based development.
+
+## Integration Modes Comparison
+
+| Feature | Embedded (Maven dependency) | Javaagent (-javaagent flag) |
+|---------|---------------------------|---------------------------|
+| Setup | Add dependency + config | Add JVM flag |
+| Code changes | Add `debug-agent` dep to pom.xml | None |
+| Port | App's port (e.g., :8080/agent) | Separate port (:9900) |
+| UI path | `/agent` | `/` |
+| Spring context | Full DI (beans, auto-config) | Captured at runtime |
+| Tools | All inspectors via auto-config | Same inspectors, manual init |
+| ClassLoader | App CL (shared) | Isolated child CL |
+| Use case | Dev/debug (intentional) | Prod debug (zero-code) |
+
+---
+
+## Changelog
+
+### v0.9.0 (2025-06-26)
+
+**New Features:**
+- **Javaagent mode** — Attach the AI debugging agent to any Spring Boot app with `java -javaagent:agent.jar -jar app.jar`. Zero code changes required.
+  - Separate HTTP server on port 9900 (no conflict with app)
+  - Child ClassLoader isolation with package relocation (zero interference)
+  - All 246+ tools available, auto-detected based on classpath
+  - Configuration via agent args, system properties, or env vars
+  - Graceful degradation: JVM-only tools if Spring context unavailable, error events if LLM key missing
+  - New module: `javaagent/` with standalone fat JAR (~7 MB)
+- **Non-retriable error detection** — `insufficient_quota`, `invalid_api_key`, `model_not_found`, `context_length_exceeded` errors are no longer retried (permanent failures)
+
+**Improvements:**
+- SSE error handling: `done` event now always sent after `error` event
+- `tool_result` SSE format aligned with embedded mode
+
+---
 
 ## License
 
